@@ -3,7 +3,7 @@
 .Rapp.history
 
 # data files
-/data/corrected_raw_data
+/data
 
 # Session Data files
 .RData
