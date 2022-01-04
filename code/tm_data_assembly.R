@@ -10,7 +10,6 @@
 
 # load required packages
 library(readxl)
-library(plyr)
 library(lubridate)
 library(tidyverse)
 
@@ -44,7 +43,7 @@ tmeta <- read_excel("data/Metadata/TrailMaster_MetaData.xlsx",
   # 3786248 rows
   
 # tidy trailmaster (tm) data
-  tmdata <- tmdata %>% 
+  tmdata2 <- tmdata %>% 
     # rename columns as lower case
     rename_all(tolower) %>%
     # trim last column and notes column
@@ -72,6 +71,7 @@ tmeta <- read_excel("data/Metadata/TrailMaster_MetaData.xlsx",
           # parse start and end dates as datetimes
           col_types = cols(dst_start = col_datetime(format = "%m/%d/%Y %H:%M"), 
                            dst_end = col_datetime(format = "%m/%d/%Y %H:%M")))
+
 
   # add year column to tmdata for joining
   tmdata <- mutate(tmdata, year = year(date))
@@ -298,7 +298,13 @@ tmdata3 <- tmdata2 %>%
     select(-c(filter_key))
 
 ##### tidy abiotic additions #####
+# there are some 's' and '*' entries in the precip and temp data 
+# wind speed are OK and numeric as-is
 
+tmdata4 <- tmdata3 %>%
+  rename(temp = hourlydrybulbtemperature, precip = hourlyprecipitation,
+         wind_speed = hourlywindspeed) %>%
+  mutate(temp = str_replace(pattern = 's', '',temp))
 
 # data.table package fwrite() is faster than write_csv 
-data.table::fwrite(tmdata3, 'QC_Data/TM_Data_QC_Sept21.csv')
+data.table::fwrite(tmdata3, 'data/TM_Data_QC.csv')
