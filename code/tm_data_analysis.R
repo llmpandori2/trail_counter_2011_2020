@@ -3,11 +3,12 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 1/1/22
+### Last Edited: 1/7/22
 ###############################################################################
 
 ##### load packages #####
 
+library(agricolae)  # hsd test letters
 library(readxl)     # read excel files
 library(janitor)    # clean up datasets
 library(lubridate)  # math w dates and times
@@ -318,7 +319,7 @@ remove(dow_box, hsd, weekday_n, fn_aov_hsd)
 # get dates of holidays from OPM
 holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
 
-# get visitation data for holidays and +14 days from holidays to compare
+# get difference in visitation for holidays and +14 days from holidays to compare
 ## chosen b/c same dow and tide cycle stage
 holidates <- rbind(mutate(holidates, lot = 'Lot 1'),
                     mutate(holidates, lot = 'Lot 2')) %>%
@@ -332,16 +333,13 @@ holidates <- rbind(mutate(holidates, lot = 'Lot 1'),
   rename(dte14 = dte, visit14 = events) %>%
   select(lot, date, holiday, dte0, visit0, dte14, visit14) %>%
   # get complete cases (holidays w data for both the day of and +14 days)
-  na.omit()
+  na.omit() %>%
+  # get difference between holiday and +14 days
+  mutate(dif = visit0 - visit14)
 
-# look at individual holiday differences (what are sample sizes?)
-holiday_n <- holidates %>%
-  group_by(lot, holiday) %>%
-  tally()
-# minimum n of 4, max of 10...go ahead w paired t tests for each holiday + lot combo
+holidates2 <- select(holidates, lot:holiday, dif, visit0, visit14)
 
-
-holiday_test <- holidates %>%
+holiday_test <- holidates2 %>%
   group_by(holiday, lot) %>%
   nest() %>%
   mutate(fit =  map(data, ~ t.test(.x$visit0, .x$visit14, paired = TRUE)),
@@ -351,24 +349,63 @@ holiday_test <- holidates %>%
   clean_names() %>%
   rename(f_value = statistic, df = parameter) %>%
   # get dif
-  mutate(dif = visit0-visit14)
+  mutate(dif = visit0-visit14) %>%
+  # summarize by lot + holiday
+  ungroup() %>%
+  group_by(lot, holiday, p_value, df, f_value) %>%
+  summarize(mean_dif = mean(dif), 
+            sd_dif = sd(dif),
+            pval_sig = p_value <= 0.05)
 
-ggplot(data = holiday_test,
-       mapping = aes(x = ))
+# make Holiday an ordered factor (by day of year)
+day_order <- holidates %>%
+  arrange(month(date), day(date)) %>%
+  distinct(holiday)
 
+holiday_test$holiday <- fct_relevel(holiday_test$holiday, day_order$holiday)
 
+# plot results
+ggplot() +
+  geom_segment(data = holiday_test, 
+               mapping = aes(x = fct_rev(holiday), xend = fct_rev(holiday),
+                             y = 0, yend = mean_dif),
+               color = if_else(holiday_test$p_value <= 0.05, 
+                               cal_palette('dudleya')[1], 'gray80')) +
+  geom_point(data = holiday_test, 
+             mapping = aes(x = fct_rev(holiday), y = mean_dif),
+                           color = if_else(holiday_test$p_value <= 0.05, 
+                                           cal_palette('dudleya')[1], 'gray80'), 
+                      size = 3, alpha = 0.6) +
+  geom_text(data = holiday_test,
+            mapping = aes(x = 14, y = -100, label = '← Fewer visitors'), 
+            color = 'black', hjust = 1) + 
+  geom_text(data = holiday_test,
+            mapping = aes(x = 14, y = 100, label = 'More visitors →'), 
+            color = 'black', hjust = 0) + 
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') + 
+  coord_flip(xlim = c(0,14), ylim = c(-1000, 1000)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
+  ylab('Difference in Visitation') + 
+  xlab('Holiday') + 
+  facet_wrap(~lot) + 
+  lltheme_light + 
+  theme(legend.position = 'none',
+        panel.grid = element_blank(),
+        text = element_text(color = 'black', size = 12),
+        axis.text = element_text(color = 'black'))
 
-
-
-
-
-
-  
+ggsave('./figs/visitation_holiday_lollipop_light.png',
+       width = 8)
 
 ##### Visitation by time of day (separated by Tues-Th, Mon/Fri and Sat/Sun) #####
 
 
 ##### Is visitation higher on days with "good" low tides (< 0.7 ft below MLLW)? #####
+# use continuous
+# max low tide vs daily visitation
+# do people come around low tide time on low tide days? or are we indescriminately afternoon people in soCal?
+
+
 
 
 
