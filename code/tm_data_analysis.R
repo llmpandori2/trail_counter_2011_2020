@@ -12,7 +12,8 @@ library(agricolae)  # hsd test letters
 library(readxl)     # read excel files
 library(janitor)    # clean up datasets
 library(lubridate)  # math w dates and times
-library(calecopal)    # color palette
+library(calecopal)  # remarkable color palette
+library(viridis)    # another color palette
 library(ggdark)     # dark field gg themes
 library(gt)         # gg tables
 library(tidyverse)  # tidy everything
@@ -44,7 +45,6 @@ lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
                               axis.text.y = element_text(size = 11),
                               axis.text.x = element_text(size = 11, angle = 45,
                                                          hjust = 1))
-
 
 ##### load + tidy data #####
 
@@ -156,8 +156,9 @@ visit_est <- ungroup(tmdata) %>%
     # rename w nicer table names
     rename(Lot = lot, Year = yr, Coverage = percent_days, Visitors = visit_corrected)
   
-    visit_est %>%
+visit_est %>%
     group_by(Lot) %>%
+    pivot_wider(names_from = Year, values_from = c(Coverage, Visitors))
     gt() %>%
     fmt_percent(columns = Coverage, decimals = 0) %>%
     fmt_number(columns = Visitors, decimals = 0) %>%
@@ -213,7 +214,7 @@ remove(visit_time_plot, visit_est, entrance)
 # tidy data
 weekday <- tmdata %>%
   # get # of events per day
-  group_by(lot, dte) %>%
+  group_by(lot, dte, low_tide_time, low_tide_lvl) %>%
   summarize(events = sum(events)) %>%
   ungroup() %>%
   # convert date to weekday, calibrate event values, make nicer names for lots
@@ -365,7 +366,7 @@ day_order <- holidates %>%
 holiday_test$holiday <- fct_relevel(holiday_test$holiday, day_order$holiday)
 
 # plot results
-ggplot() +
+lollipop <- ggplot() +
   geom_segment(data = holiday_test, 
                mapping = aes(x = fct_rev(holiday), xend = fct_rev(holiday),
                              y = 0, yend = mean_dif),
@@ -395,16 +396,25 @@ ggplot() +
         axis.text = element_text(color = 'black'))
 
 ggsave('./figs/visitation_holiday_lollipop_light.png',
+       lollipop,
        width = 8)
 
+remove(lollipop, holidates, holidates2, holiday_test, day_order)
 ##### Visitation by time of day (separated by Tues-Th, Mon/Fri and Sat/Sun) #####
 
 
 ##### Is visitation higher on days with "good" low tides (< 0.7 ft below MLLW)? #####
 # use continuous
 # max low tide vs daily visitation
-# do people come around low tide time on low tide days? or are we indescriminately afternoon people in soCal?
+# do people come around low tide time on low tide days? or are we indiscriminately afternoon people in soCal?
 
+
+
+ggplot(data = weekday,
+       mapping = aes(x = low_tide_lvl,
+                     y = events, color = dow)) + 
+  geom_point() + 
+  facet_wrap(~lot)
 
 
 
