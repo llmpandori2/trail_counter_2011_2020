@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 1/7/22
+### Last Edited: 1/18/22
 ###############################################################################
 
 ##### load packages #####
@@ -20,6 +20,10 @@ library(tidyverse)  # tidy everything
 
 ##### presets #####
 
+# 'not in' operator
+`%notin%` <- Negate(`%in%`)
+
+# custom theme w light field
 lltheme_light <- theme_bw() + theme(text = element_text(size = 12),
                               # add more space between panels
                               panel.spacing = unit(1, 'lines'),
@@ -33,6 +37,7 @@ lltheme_light <- theme_bw() + theme(text = element_text(size = 12),
                               axis.text.x = element_text(size = 11, angle = 45,
                                                          hjust = 1))
 
+# custom theme w dark field
 lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
                               # add more space between panels
                               panel.spacing = unit(1, 'lines'),
@@ -135,10 +140,6 @@ tmdata <- tmdata %>%
   
 ##### question 1a - has visitation increased over time #####
   
-# Lot 1 remains similar over time
-# Lot 2 increases over time
-# Perhaps b/c Lot 1 is full a lot of the time and Lot 2 isn't
-  
 visit_est <- ungroup(tmdata) %>%
     mutate(yr = year(dtime)) %>%
     group_by(lot, yr) %>%
@@ -158,13 +159,12 @@ visit_est <- ungroup(tmdata) %>%
   
 visit_est %>%
     group_by(Lot) %>%
-    pivot_wider(names_from = Year, values_from = c(Coverage, Visitors))
     gt() %>%
     fmt_percent(columns = Coverage, decimals = 0) %>%
     fmt_number(columns = Visitors, decimals = 0) %>%
     gtsave('./figs/visit_table.png')
   
-##### question 2 - visitation comparison w/ entrance #####
+##### question 1b - visitation comparison w/ entrance #####
   
 # load entrance station visitation data from IRMA
 entrance <- read_csv("data/accessory/entrance_IRMA_visitation_2011_2020.csv")
@@ -175,7 +175,11 @@ visit_est <- rbind(visit_est %>%
                         mutate(Location = 'Entrance station') %>%
                         rename(Year = year, Visitors = entrance_visit))
 
-visit_time_plot <- ggplot(data = visit_est,
+# make 2 plots - one w/ entrance data and one w/o
+
+visit_time_fn <- function(dataset, savename) {
+  
+visit_time_plot <- ggplot(data = dataset,
   mapping = aes(x = Year, y = Visitors, group = Location, 
                 color = Location)) + 
   geom_point() + 
@@ -188,31 +192,34 @@ visit_time_plot <- ggplot(data = visit_est,
   scale_x_continuous(breaks = scales::pretty_breaks()) + 
   facet_wrap(~Location) 
 
-
-ggsave(filename = './figs/visitation_time_dark.png',
+ggsave(filename = paste('./figs/visitation_year_dark_', savename, '.png', sep = ''),
        plot = visit_time_plot + lltheme_dark + theme(legend.position = 'none'),
        width = 7, height = 3)
 
-ggsave(filename = './figs/visitation_time_light.png',
+ggsave(filename = paste('./figs/visitation_year_light_', savename, '.png', sep = ''),
        plot = visit_time_plot + lltheme_light + theme(legend.position = 'none'),
        width = 7, height = 3)
+}
 
-### is there a correlation b/w entrance visitation and lot1/2
-visit_est <- pivot_wider(visit_est, names_from = Location, values_from = Visitors)%>%
-  clean_names()
+# run for both lots + entrance
+visit_time_fn(visit_est, 'with_entrance')
 
-# entrance vs lot 1 (NS relationship, p = 0.30, r2 = 0.13)
-summary(lm(lot_1 ~ entrance_station, data = visit_est))
+# run for both lots, no entrance
+visit_time_fn(filter(visit_est, Location != 'Entrance station'), 'no_entrance')
 
-# entrance vs lot 2(NS relationship, p = 0.90, r2 = -0.12)
-summary(lm(lot_2 ~ entrance_station, data = visit_est))
+##### question 2 - visitation across days of the week (holidays excluded) #####
 
-remove(visit_time_plot, visit_est, entrance)
+# exclude holidays from this analysis because visitation higher on holidays
 
-##### question 3 - visitation across days of the week #####
+# list of OPM holidays
+holidays <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx") %>%
+  mutate(dte = date(date)) %>%
+  select(dte)
 
 # tidy data
 weekday <- tmdata %>%
+  # exclude holidays 
+  filter(dte %notin% c(holidays)) %>%
   # get # of events per day
   group_by(lot, dte, low_tide_time, low_tide_lvl) %>%
   summarize(events = sum(events)) %>%
@@ -245,12 +252,12 @@ fn_aov_hsd <- function(lot_name, save_name) {
   data <- filter(weekday, lot == lot_name)
   # do aov and save output
   capture.output(summary(aov(events ~ dow, data = data)),
-                 file = paste('./figs/visitation_dow_anova', save_name, '.doc',
+                 file = paste('./stats/visitation_dow_anova', save_name, '.doc',
                               sep = ''))
   # do tukey hsd and save output 
   hsd <- agricolae::HSD.test(aov(events ~ dow, data = data),
                              trt = 'dow', group = FALSE)
-  capture.output(hsd, file = paste('./figs/visitation_dow_hsd', save_name, '.doc',
+  capture.output(hsd, file = paste('./stats/visitation_dow_hsd', save_name, '.doc',
                                    sep = ''))
 }
 
@@ -260,21 +267,23 @@ fn_aov_hsd('Lot 2', 'lot2')
 
 # run model and get output for figures
 hsd <- rbind(agricolae::HSD.test(aov(events ~ dow, 
-                                     data = filter(weekday, lot == 'Lot 1')), 
-                                 trt = 'dow', group = TRUE)$groups %>%
-               mutate(dow = c('Saturday', 'Sunday', 'Friday', 'Monday', 'Thursday', 'Wednesday', 'Tuesday'),
+              data = filter(weekday, lot == 'Lot 1')), 
+              trt = 'dow', group = TRUE)$groups %>%
+       mutate(dow = c('Saturday', 'Sunday', 'Friday', 'Monday', 'Thursday', 
+                      'Wednesday', 'Tuesday'),
                       lot = 'Lot 1') %>%
-               as_tibble() %>%
-               select(dow, lot, groups),
-             agricolae::HSD.test(aov(events ~ dow, 
-                                     data = filter(weekday, lot == 'Lot 2')), 
-                                 trt = 'dow', group = TRUE)$groups %>%
-               mutate(dow = c('Sunday', 'Saturday', 'Monday', 'Friday', 'Thursday', 'Wednesday', 'Tuesday'),
+       as_tibble() %>%
+       select(dow, lot, groups),
+       agricolae::HSD.test(aov(events ~ dow, 
+              data = filter(weekday, lot == 'Lot 2')), 
+              trt = 'dow', group = TRUE)$groups %>%
+       mutate(dow = c('Sunday', 'Saturday', 'Monday', 'Friday', 'Thursday', 
+                      'Wednesday', 'Tuesday'),
                       lot = 'Lot 2') %>%
-               as_tibble() %>%
-               select(dow, lot, groups)
+       as_tibble() %>%
+       select(dow, lot, groups)
              ) %>%
-  left_join(., select(weekday_n, dow:max_n), by = c('dow', 'lot'))
+       left_join(., select(weekday_n, dow:max_n), by = c('dow', 'lot'))
   
 # plot weekday data with hsd labels
 dow_box <- ggplot(data = weekday,
@@ -409,13 +418,93 @@ remove(lollipop, holidates, holidates2, holiday_test, day_order)
 # do people come around low tide time on low tide days? or are we indiscriminately afternoon people in soCal?
 
 
-
+# no relationship b/w min tide lvl and visitation at either lot
 ggplot(data = weekday,
        mapping = aes(x = low_tide_lvl,
                      y = events, color = dow)) + 
   geom_point() + 
   facet_wrap(~lot)
 
+# time of day?
+ggplot(data = tmdata,
+       mapping = aes(x = tidelvl, y = events, color = lot)) + 
+  geom_point() + 
+  facet_wrap(~lot)
+
+# since low tides are special days, use holiday appraoch, but + 1 week?
+lt <- select(weekday, lot, dte, low_tide_lvl, events, dow) %>%
+  # filter for days with tides < 0.7 ft (0.21 m) to get list of days with "good" low tides
+  filter(low_tide_lvl < 0.21) %>%
+  # rename old events column for events_0 and dte_0
+  rename(dte0 = dte, events0 = events, low_tide_lvl0 = low_tide_lvl) %>%
+  # make dte = dte0 + 7
+  mutate(dte = dte0 + days(7)) %>%
+  # join with weekday data to get events at +7 from dte0
+  left_join(., select(weekday, lot, dte, low_tide_lvl, events)) %>%
+  # rename new with dte7 etc.
+  rename(dte7 = dte, events7 = events, low_tide_lvl7 = low_tide_lvl) %>%
+  # remove events where the next week low tide (low_tide_lvl7) is < 0.21
+  # note: NA means no low tide during park hrs on a given date
+  filter(is.na(low_tide_lvl7)) %>%
+  # now get days with events for both events0 and events7
+  filter(!is.na(events0) & !is.na(events7)) %>%
+  # calculate difference in visitation b/w paired events
+  mutate(dif = events0 - events7)
+
+# is difference dif from 0?
+# pretty normally distributed 
+# hist(lt$dif)
+
+# run t-test
+t.test(lt$dif)
+# yes (t = 3.50, df = 1653, p < 0.001)
+
+# get dates of holidays from OPM
+holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
+
+
+# remove holidays and test
+lt_no_holiday <- lt %>%
+  filter(dte0 %notin% date(holidates$date) & dte7 %notin% date(holidates$date))
+
+# there is still a difference b/w low tide days and not
+t.test(lt_no_holiday$dif)
+# yes (t = 3.44, df = 1522, p < 0.001)
+# but it's not that big of a difference (mean = 22.17 visitors, 95% CI 10-35 additional visitors)
+
+# there is no difference among dow
+kruskal.test(dif ~ dow, data = filter(lt_no_holiday, lot == 'Lot 1'))
+# chi2 = 4.75, df = 6, p = 0.58
+
+# rudimentary fig 
+ggplot(data = lt_no_holiday,
+       mapping = aes(x = dif, y = fct_rev(dow), fill = dow)) + 
+  geom_boxplot() +
+  geom_vline(xintercept = 0, linetype = 'dashed', color = 'black') + 
+  coord_cartesian(xlim = c(-1500,1500)) +
+  scale_x_continuous(breaks = c(-1500,-1000,-500,0,500,1000,1500)) + 
+  scale_color_manual(values = cal_palette(name = 'dudleya', n = 7,
+                                          type = 'continuous')) + 
+  scale_fill_manual(values = cal_palette(name = 'dudleya', n = 7, 
+                                         type = 'continuous')) + 
+  xlab('Difference in Visitation') + 
+  ylab('Day of Week') +
+  facet_wrap(~lot, scales = 'free_x') + 
+  lltheme_light + 
+  theme(legend.position = 'none')
+
+ggsave('./figs/visitation_dif_lowtide_light.png',
+       width = 5, height = 5)
+
+
+
+
+
+
+
+
+
+  
 
 
 
