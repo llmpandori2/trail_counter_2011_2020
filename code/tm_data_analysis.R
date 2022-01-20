@@ -193,11 +193,13 @@ visit_time_plot <- ggplot(data = dataset,
   facet_wrap(~Location) 
 
 ggsave(filename = paste('./figs/visitation_year_dark_', savename, '.png', sep = ''),
-       plot = visit_time_plot + lltheme_dark + theme(legend.position = 'none'),
+       plot = visit_time_plot + lltheme_dark + theme(legend.position = 'none',
+                                                     panel.grid = element_blank()),
        width = 7, height = 3)
 
 ggsave(filename = paste('./figs/visitation_year_light_', savename, '.png', sep = ''),
-       plot = visit_time_plot + lltheme_light + theme(legend.position = 'none'),
+       plot = visit_time_plot + lltheme_light + theme(legend.position = 'none',
+                                                      panel.grid = element_blank()),
        width = 7, height = 3)
 }
 
@@ -206,6 +208,24 @@ visit_time_fn(visit_est, 'with_entrance')
 
 # run for both lots, no entrance
 visit_time_fn(filter(visit_est, Location != 'Entrance station'), 'no_entrance')
+
+# another approach- visitation area chart
+visit_area <- ggplot(data = filter(visit_est, Location != 'Entrance station'),
+                          mapping = aes(x = Year, y = Visitors, group = fct_rev(Location), 
+                                        fill = Location)) + 
+  geom_area() +
+  scale_fill_manual(values = c(cal_palette('dudleya')[3],
+                               cal_palette('dudleya')[1])
+                    ) + 
+  xlab('Year') + 
+  ylab('Number of visitors') + 
+  coord_cartesian(xlim = c(2011,2020)) + 
+  scale_y_continuous(labels = scales::label_number(big.mark = ',')) +
+  scale_x_continuous(breaks = scales::pretty_breaks())
+
+# save dark field version
+ggsave(filename = './figs/visitation_area_dark_.png',
+       plot = visit_area + lltheme_dark + theme(panel.grid = element_blank()))
 
 ##### question 2 - visitation across days of the week (holidays excluded) #####
 
@@ -322,15 +342,15 @@ ggsave(filename = './figs/vistation_dow_dark.png',
                panel.grid.minor = element_blank()) ,
        width = 7, height = 5)
 
-remove(dow_box, hsd, weekday_n, fn_aov_hsd)
+remove(dow_box, hsd, weekday_n, fn_aov_hsd, visit_est, visit_area)
 
-##### Visitation by holiday/non holiday? #####
+##### question 3 - Visitation on holidays/non-holidays? #####
 
 # get dates of holidays from OPM
 holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
 
 # get difference in visitation for holidays and +14 days from holidays to compare
-## chosen b/c same dow and tide cycle stage
+## chosen b/c same dow and similar tide cycle stage
 holidates <- rbind(mutate(holidates, lot = 'Lot 1'),
                     mutate(holidates, lot = 'Lot 2')) %>%
   mutate(dte = date(date), holiday = event) %>%
@@ -409,14 +429,34 @@ ggsave('./figs/visitation_holiday_lollipop_light.png',
        width = 8)
 
 remove(lollipop, holidates, holidates2, holiday_test, day_order)
+
+##### data wandering - heat map of visitors for months across years #####
+# NEED TO ACCOUNT FOR MISSING DATAAAAAAAAAA
+# FIX TOMORROW
+
+visit_heatmap <- tmdata %>%
+  mutate(yr = as_factor(year(dte)),
+         mo = month(dte, label = TRUE)) %>%
+  group_by(yr, mo) %>%
+  summarize(Visitors = sum(events, na.rm = TRUE)) %>%
+  ggplot(data = visit_heatmap,
+         mapping = aes(x = mo, y = yr, fill = Visitors)) + 
+  geom_tile() +
+  xlab('Month') + 
+  ylab('Year') +
+  scale_fill_viridis() 
+
+ggsave('./figs/heatmap_visits_month_year_light.png',
+       visit_heatmap + lltheme_light + theme(panel.grid = element_blank()))
+
+ggsave('./figs/heatmap_visits_month_year_dark.png',
+       visit_heatmap + lltheme_dark + theme(panel.grid = element_blank()))
+  
+
 ##### Visitation by time of day (separated by Tues-Th, Mon/Fri and Sat/Sun) #####
 
 
 ##### Is visitation higher on days with "good" low tides (< 0.7 ft below MLLW)? #####
-# use continuous
-# max low tide vs daily visitation
-# do people come around low tide time on low tide days? or are we indiscriminately afternoon people in soCal?
-
 
 # no relationship b/w min tide lvl and visitation at either lot
 ggplot(data = weekday,
@@ -431,7 +471,7 @@ ggplot(data = tmdata,
   geom_point() + 
   facet_wrap(~lot)
 
-# since low tides are special days, use holiday appraoch, but + 1 week?
+# since low tides are special days, use matched dow approach, offset by 1 week?
 lt <- select(weekday, lot, dte, low_tide_lvl, events, dow) %>%
   # filter for days with tides < 0.7 ft (0.21 m) to get list of days with "good" low tides
   filter(low_tide_lvl < 0.21) %>%
