@@ -388,7 +388,8 @@ ggplot(data = holiday_test) +
   geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
   geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
                               ymax = (mean_dif + sd_dif), width = 0.3),
-                color = if_else(holiday_test$pval_sig == 'TRUE', 'gray48', 'gray')) + 
+                color = if_else(holiday_test$pval_sig == 'TRUE', 'gray48', 
+                                cal_palette('tidepool')[4])) + 
   scale_fill_manual(values = c(cal_palette('tidepool')[4], cal_palette('tidepool')[1])) + 
   geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
             color = 'black', hjust = 0.95, size = 3.5) + 
@@ -400,7 +401,7 @@ ggplot(data = holiday_test) +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') + 
   coord_flip(xlim = c(1,14)) +
   scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
-  ylab('Difference in Visitation') + 
+  ylab('Difference in visitation') + 
   xlab('Holiday') +
   facet_wrap(~lot) + 
   lltheme_light + 
@@ -409,7 +410,7 @@ ggplot(data = holiday_test) +
         text = element_text(color = 'black', size = 12),
         axis.text = element_text(color = 'black'))
 
-ggsave('./figs/visitation_holiday_light.png')
+ggsave('./figs/visitation_holiday_light.png', width = 8)
 
 # dark theme plot
 # plot results as barplot with se and * if significant
@@ -429,7 +430,7 @@ ggplot(data = holiday_test) +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'white') + 
   coord_flip(xlim = c(1,14)) +
   scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
-  ylab('Difference in Visitation') + 
+  ylab('Difference in visitation') + 
   xlab('Holiday') +
   facet_wrap(~lot) + 
   lltheme_dark + 
@@ -438,7 +439,7 @@ ggplot(data = holiday_test) +
         text = element_text(color = 'white', size = 12),
         axis.text = element_text(color = 'white'))
 
-ggsave('./figs/visitation_holiday_dark.png')
+ggsave('./figs/visitation_holiday_dark.png', width = 8)
 
 remove(holiday_test, holidates2, holidates)
 
