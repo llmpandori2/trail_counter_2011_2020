@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 1/18/22
+### Last Edited: 1/25/22
 ###############################################################################
 
 ##### load packages #####
@@ -15,6 +15,7 @@ library(lubridate)  # math w dates and times
 library(calecopal)  # remarkable color palette
 library(viridis)    # another color palette
 library(ggdark)     # dark field gg themes
+library(ggridges)   # ridgeline plot
 library(gt)         # gg tables
 library(tidyverse)  # tidy everything
 
@@ -35,7 +36,8 @@ lltheme_light <- theme_bw() + theme(text = element_text(size = 12),
                               # adjust x axis labels
                               axis.text.y = element_text(size = 11),
                               axis.text.x = element_text(size = 11, angle = 45,
-                                                         hjust = 1))
+                                                         hjust = 1),
+                              panel.grid = element_blank())
 
 # custom theme w dark field
 lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
@@ -49,7 +51,8 @@ lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
                               # adjust x axis labels
                               axis.text.y = element_text(size = 11),
                               axis.text.x = element_text(size = 11, angle = 45,
-                                                         hjust = 1))
+                                                         hjust = 1),
+                              panel.grid = element_blank())
 
 ##### load + tidy data #####
 
@@ -138,7 +141,7 @@ tmdata <- tmdata %>%
 # remove extra dfs 
   remove(low_tide, low_tide2, low_tide3, low_tide4, sunrise_sunset, tide_cont)
   
-##### question 1a - has visitation increased over time #####
+##### question 1a - visitation patterns over years #####
   
 visit_est <- ungroup(tmdata) %>%
     mutate(yr = year(dtime)) %>%
@@ -164,7 +167,7 @@ visit_est %>%
     fmt_number(columns = Visitors, decimals = 0) %>%
     gtsave('./figs/visit_table.png')
   
-##### question 1b - visitation comparison w/ entrance #####
+##### question 1b - visitation figure w/ entrance over years #####
   
 # load entrance station visitation data from IRMA
 entrance <- read_csv("data/accessory/entrance_IRMA_visitation_2011_2020.csv")
@@ -175,61 +178,38 @@ visit_est <- rbind(visit_est %>%
                         mutate(Location = 'Entrance station') %>%
                         rename(Year = year, Visitors = entrance_visit))
 
-# make 2 plots - one w/ entrance data and one w/o
-
-visit_time_fn <- function(dataset, savename) {
-  
-visit_time_plot <- ggplot(data = dataset,
+# base plot of visitation over time at entrance, lot 1 and lot 2
+visit_time_plot <- ggplot(data = visit_est,
   mapping = aes(x = Year, y = Visitors, group = Location, 
                 color = Location)) + 
   geom_point() + 
   geom_line() + 
-  # if contrast is needed, switch dudleya 1 with creek 5
-  scale_color_manual(values = c(cal_palette('dudleya')[2], cal_palette('dudleya')[1], cal_palette('dudleya')[4])) + 
   xlab('Year') + 
   ylab('Number of visitors') +
   scale_y_continuous(labels = scales::label_number(big.mark = ',')) + 
-  scale_x_continuous(breaks = scales::pretty_breaks()) + 
-  facet_wrap(~Location) 
-
-ggsave(filename = paste('./figs/visitation_year_dark_', savename, '.png', sep = ''),
-       plot = visit_time_plot + lltheme_dark + theme(legend.position = 'none',
-                                                     panel.grid = element_blank()),
-       width = 7, height = 3)
-
-ggsave(filename = paste('./figs/visitation_year_light_', savename, '.png', sep = ''),
-       plot = visit_time_plot + lltheme_light + theme(legend.position = 'none',
-                                                      panel.grid = element_blank()),
-       width = 7, height = 3)
-}
-
-# run for both lots + entrance
-visit_time_fn(visit_est, 'with_entrance')
-
-# run for both lots, no entrance
-visit_time_fn(filter(visit_est, Location != 'Entrance station'), 'no_entrance')
-
-# another approach- visitation area chart
-visit_area <- ggplot(data = filter(visit_est, Location != 'Entrance station'),
-                          mapping = aes(x = Year, y = Visitors, group = fct_rev(Location), 
-                                        fill = Location)) + 
-  geom_area() +
-  scale_fill_manual(values = c(cal_palette('dudleya')[3],
-                               cal_palette('dudleya')[1])
-                    ) + 
-  xlab('Year') + 
-  ylab('Number of visitors') + 
-  coord_cartesian(xlim = c(2011,2020)) + 
-  scale_y_continuous(labels = scales::label_number(big.mark = ',')) +
   scale_x_continuous(breaks = scales::pretty_breaks())
 
-# save dark field version
-ggsave(filename = './figs/visitation_area_dark_.png',
-       plot = visit_area + lltheme_dark + theme(panel.grid = element_blank()))
+# save dark theme version
+ggsave(filename = paste('./figs/visitation_year_dark_.png', sep = ''),
+       plot = visit_time_plot + 
+              scale_color_manual(values = c(cal_palette('tidepool')[1],
+                                            cal_palette('tidepool')[4],
+                                            cal_palette('tidepool')[5])) +
+              lltheme_dark, 
+       height = 5)
+
+# save light theme version
+ggsave(filename = paste('./figs/visitation_year_light_.png', sep = ''),
+       plot = visit_time_plot + 
+         scale_color_manual(values = c(cal_palette('tidepool')[1],
+                                       cal_palette('tidepool')[2],
+                                       cal_palette('tidepool')[5])) +
+         lltheme_light, 
+       height = 5)
+
+remove(visit_time_plot, entrance)
 
 ##### question 2 - visitation across days of the week (holidays excluded) #####
-
-# exclude holidays from this analysis because visitation higher on holidays
 
 # list of OPM holidays
 holidays <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx") %>%
@@ -256,7 +236,7 @@ weekday <- tmdata %>%
 # are sample sizes + variances relatively equal? - yes
 weekday_n <- weekday %>%
   group_by(dow, lot) %>%
-  summarize(max_n = quantile(events, 0.95),
+  summarize(med_n = median(events),
             n = length(dow),
             var = sd(events)
             )
@@ -303,19 +283,19 @@ hsd <- rbind(agricolae::HSD.test(aov(events ~ dow,
        as_tibble() %>%
        select(dow, lot, groups)
              ) %>%
-       left_join(., select(weekday_n, dow:max_n), by = c('dow', 'lot'))
+       left_join(., select(weekday_n, dow:med_n), by = c('dow', 'lot'))
   
 # plot weekday data with hsd labels
 dow_box <- ggplot(data = weekday,
                    mapping = aes(x = dow, y = events, fill = dow, 
                                  color = dow, alpha = 0.2)) +
-              geom_jitter(alpha = 0.5, size = 0.7) + 
+              geom_jitter(alpha = 0.3, size = 0.7) + 
 
               coord_cartesian(ylim = c(0,2500)) +
               scale_y_continuous(labels = scales::label_number(big.mark = ',')) +
-              scale_color_manual(values = cal_palette(name = 'dudleya', n = 7,
+              scale_color_manual(values = cal_palette(name = 'tidepool', n = 7,
                                                       type = 'continuous')) + 
-              scale_fill_manual(values = cal_palette(name = 'dudleya', n = 7, 
+              scale_fill_manual(values = cal_palette(name = 'tidepool', n = 7, 
                                                       type = 'continuous')) + 
               xlab('Day of week') + 
               ylab('Visitors per day') + 
@@ -324,8 +304,12 @@ dow_box <- ggplot(data = weekday,
 # save light field and dark field versions
 ggsave(filename = './figs/vistation_dow_light.png',
        plot = dow_box + geom_boxplot(color = 'black', outlier.shape = NA) + 
-            geom_text(data = hsd, mapping = aes(x = dow, y = -40, 
+        geom_text(data = filter(hsd, lot == 'Lot 1'),
+                  mapping = aes(x = dow, y = (med_n + 1200), 
                       label = groups), color = 'black', alpha = 1) +
+        geom_text(data = filter(hsd, lot == 'Lot 2'),
+                  mapping = aes(x = dow, y = (med_n + 600), 
+                       label = groups), color = 'black', alpha = 1) +
          lltheme_light + 
          theme(legend.position = 'none',
                panel.grid.major = element_blank(),
@@ -334,15 +318,19 @@ ggsave(filename = './figs/vistation_dow_light.png',
 
 ggsave(filename = './figs/vistation_dow_dark.png',
        plot = dow_box + geom_boxplot(color = 'white', outlier.shape = NA) + 
-         geom_text(data = hsd, mapping = aes(x = dow, y = -40, 
-                                             label = groups), color = 'white', alpha = 1) +
+         geom_text(data = filter(hsd, lot == 'Lot 1'),
+                   mapping = aes(x = dow, y = (med_n + 1200), 
+                                 label = groups), color = 'white', alpha = 1) +
+         geom_text(data = filter(hsd, lot == 'Lot 2'),
+                   mapping = aes(x = dow, y = (med_n + 600), 
+                                 label = groups), color = 'white', alpha = 1) +
          lltheme_dark + 
          theme(legend.position = 'none',
                panel.grid.major = element_blank(),
                panel.grid.minor = element_blank()) ,
        width = 7, height = 5)
 
-remove(dow_box, hsd, weekday_n, fn_aov_hsd, visit_est, visit_area)
+remove(dow_box, hsd, weekday_n, fn_aov_hsd, visit_est)
 
 ##### question 3 - Visitation on holidays/non-holidays? #####
 
@@ -385,7 +373,8 @@ holiday_test <- holidates2 %>%
   group_by(lot, holiday, p_value, df, f_value) %>%
   summarize(mean_dif = mean(dif), 
             sd_dif = sd(dif),
-            pval_sig = p_value <= 0.05)
+            pval_sig = p_value <= 0.05) %>%
+  distinct()
 
 # make Holiday an ordered factor (by day of year)
 day_order <- holidates %>%
@@ -394,29 +383,25 @@ day_order <- holidates %>%
 
 holiday_test$holiday <- fct_relevel(holiday_test$holiday, day_order$holiday)
 
-# plot results
-lollipop <- ggplot() +
-  geom_segment(data = holiday_test, 
-               mapping = aes(x = fct_rev(holiday), xend = fct_rev(holiday),
-                             y = 0, yend = mean_dif),
-               color = if_else(holiday_test$p_value <= 0.05, 
-                               cal_palette('dudleya')[1], 'gray80')) +
-  geom_point(data = holiday_test, 
-             mapping = aes(x = fct_rev(holiday), y = mean_dif),
-                           color = if_else(holiday_test$p_value <= 0.05, 
-                                           cal_palette('dudleya')[1], 'gray80'), 
-                      size = 3, alpha = 0.6) +
-  geom_text(data = holiday_test,
-            mapping = aes(x = 14, y = -100, label = '← Fewer visitors'), 
-            color = 'black', hjust = 1) + 
-  geom_text(data = holiday_test,
-            mapping = aes(x = 14, y = 100, label = 'More visitors →'), 
-            color = 'black', hjust = 0) + 
+# plot results as barplot with se and * if significant
+ggplot(data = holiday_test) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
+                              ymax = (mean_dif + sd_dif), width = 0.3),
+                color = if_else(holiday_test$pval_sig == 'TRUE', 'gray48', 'gray')) + 
+  scale_fill_manual(values = c(cal_palette('tidepool')[4], cal_palette('tidepool')[1])) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
+            color = 'black', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'black', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(holiday_test, pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+                          label = '*'), color = 'black') +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') + 
-  coord_flip(xlim = c(0,14), ylim = c(-1000, 1000)) +
+  coord_flip(xlim = c(1,14)) +
   scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
   ylab('Difference in Visitation') + 
-  xlab('Holiday') + 
+  xlab('Holiday') +
   facet_wrap(~lot) + 
   lltheme_light + 
   theme(legend.position = 'none',
@@ -424,52 +409,175 @@ lollipop <- ggplot() +
         text = element_text(color = 'black', size = 12),
         axis.text = element_text(color = 'black'))
 
-ggsave('./figs/visitation_holiday_lollipop_light.png',
-       lollipop,
-       width = 8)
+ggsave('./figs/visitation_holiday_light.png')
 
-remove(lollipop, holidates, holidates2, holiday_test, day_order)
+# dark theme plot
+# plot results as barplot with se and * if significant
+ggplot(data = holiday_test) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
+                              ymax = (mean_dif + sd_dif), width = 0.3),
+                color = if_else(holiday_test$pval_sig == 'FALSE', 'gray48', 'gray')) + 
+  scale_fill_manual(values = c(cal_palette('tidepool')[2], cal_palette('tidepool')[1])) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
+            color = 'white', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'white', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(holiday_test, pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+                          label = '*'), color = 'white') +
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'white') + 
+  coord_flip(xlim = c(1,14)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
+  ylab('Difference in Visitation') + 
+  xlab('Holiday') +
+  facet_wrap(~lot) + 
+  lltheme_dark + 
+  theme(legend.position = 'none',
+        panel.grid = element_blank(),
+        text = element_text(color = 'white', size = 12),
+        axis.text = element_text(color = 'white'))
 
-##### data wandering - heat map of visitors for months across years #####
-# NEED TO ACCOUNT FOR MISSING DATAAAAAAAAAA
-# FIX TOMORROW
+ggsave('./figs/visitation_holiday_dark.png')
 
-visit_heatmap <- tmdata %>%
-  mutate(yr = as_factor(year(dte)),
-         mo = month(dte, label = TRUE)) %>%
+remove(holiday_test, holidates2, holidates)
+
+##### supplement - heat map of visitors by month and year #####
+
+visit_est <- ungroup(tmdata) %>%
+  mutate(yr = as_factor(year(dtime)),
+         mo = month(dtime, label = TRUE),
+         dpm = case_when(mo %in% c('Sep', 'Apr', 'Jun', 'Nov') ~ 30,
+                         mo == 'Feb' & yr %in% c('2012', '2016', '2020') ~ 29,
+                         mo == 'Feb' & yr %notin% c('2012', '2016', '2020') ~ 28,
+                         TRUE ~ 31)) %>%
+  group_by(lot, yr, mo) %>%
+  summarize(visit_raw = sum(events),
+            percent_days = (length(unique(date(dtime)))/unique(dpm))) %>%
+  ungroup() %>%
+  # correct for missing data (percent days) 
+  # and hand calibration (multiplier and div by 2)
+  mutate(visit_corrected = visit_raw*(((1 - percent_days)+1)/1),
+         visit_corrected = case_when(lot == 1 ~ (visit_corrected*1.53)/2,
+                                     lot == 2 ~ (visit_corrected*1.27)/2)) %>%
+  # get sums across lots
   group_by(yr, mo) %>%
-  summarize(Visitors = sum(events, na.rm = TRUE)) %>%
-  ggplot(data = visit_heatmap,
+  summarize(Visitors = sum(visit_corrected))
+
+visit_heatmap <- ggplot(data = visit_est,
          mapping = aes(x = mo, y = yr, fill = Visitors)) + 
   geom_tile() +
   xlab('Month') + 
   ylab('Year') +
-  scale_fill_viridis() 
+  scale_fill_gradientn(colors = c(cal_palette('tidepool')[3], cal_palette('tidepool')[1]))
 
 ggsave('./figs/heatmap_visits_month_year_light.png',
        visit_heatmap + lltheme_light + theme(panel.grid = element_blank()))
 
 ggsave('./figs/heatmap_visits_month_year_dark.png',
        visit_heatmap + lltheme_dark + theme(panel.grid = element_blank()))
+
+remove(visit_heatmap, visit_est)
   
+##### question 4 - visitation by time of day (by dow, holidays excluded) #####
 
-##### Visitation by time of day (separated by Tues-Th, Mon/Fri and Sat/Sun) #####
+# tidy data
+tod <- tmdata %>%
+  # exclude holidays 
+  filter(dte %notin% c(holidays)) %>%
+  # convert date to weekday, calibrate event values, make nicer names for lots
+  mutate(dow = weekdays(dte),
+         events = case_when(lot == 1 ~ (events*1.53)/2,
+                            lot == 2 ~ (events*1.27)/2),
+         lot = case_when(lot == 1 ~ 'Lot 1',
+                         lot == 2 ~ 'Lot 2'),
+         hr = hour(dtime)) %>%
+  # make day of week an ordered factor, add col for day type
+  mutate(dow = ordered(dow, levels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))) %>%
+  # get avg +/- SE number of visitors per hour each dow
+  group_by(lot, hr, dow) %>%
+  summarize(Visitors = mean(events),
+            visit_se = sd(events)/sqrt(length(events)))
 
-
-##### Is visitation higher on days with "good" low tides (< 0.7 ft below MLLW)? #####
-
-# no relationship b/w min tide lvl and visitation at either lot
-ggplot(data = weekday,
-       mapping = aes(x = low_tide_lvl,
-                     y = events, color = dow)) + 
-  geom_point() + 
+# plot as distributions
+tod_ridge <- ggplot(data = tod) + 
+  geom_ridgeline(mapping = aes(x = hr, y = fct_rev(dow), height = Visitors/100, 
+                               fill = fct_rev(dow)), alpha = 0.6) +
+  scale_fill_manual(values = cal_palette(name = 'tidepool', n = 7, type = 'continuous')) + 
+  scale_x_continuous(breaks = c(5,7,9,11,13,15,17,19)) + 
+  xlab('Hour of day') + 
+  ylab('Visitation by day of week') +
   facet_wrap(~lot)
 
-# time of day?
+# save dark theme version
+ggsave(filename = './figs/tod_ridgeline_dark.png',
+       plot = tod_ridge + 
+              geom_vline(xintercept = 9, linetype = 'dashed', color = 'gray') + 
+              geom_vline(xintercept = 17, linetype = 'dashed', color = 'gray')+
+              lltheme_dark + 
+              theme(legend.position = 'none'))
+
+# save light theme version
+ggsave(filename = './figs/tod_ridgeline_light.png',
+       plot = tod_ridge + 
+         geom_vline(xintercept = 9, linetype = 'dashed', color = 'gray') + 
+         geom_vline(xintercept = 17, linetype = 'dashed', color = 'gray')+
+         lltheme_light + 
+         theme(legend.position = 'none'))
+
+remove(tod_ridge, tod)
+
+##### question 5 - visitation by tide level ("good" tides < 0.7 ft below MLLW) #####
+
+# calculate lowest tide lvl 7a-7p and visitation each day
+day_tide <- tmdata %>%
+  # limit to 7 am - 7 pm
+  filter(hour(dtime) >= 7 & hour(dtime) <= 19) %>%
+  # get lowest tidelvl value between 7 am and 7 pm and visitation for each day
+  group_by(lot, dte) %>%
+  summarize(low = min(tidelvl, na.rm = TRUE),
+         events = sum(events, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # convert date to dow, calibrate events, nicer lot names
+  mutate(dow = weekdays(dte),
+         events = case_when(lot == 1 ~ (events*1.53)/2,
+                            lot == 2 ~ (events*1.27)/2),
+         lot = case_when(lot == 1 ~ 'Lot 1',
+                         lot == 2 ~ 'Lot 2')) %>%
+  # make day of week an ordered factor
+  mutate(dow = ordered(dow, levels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))) %>%
+  # remove days where events are greater than 10 (reduces 0 clutter @ bottom)
+  filter(events > 10)
+  
+# no relationship b/w min tide lvl and visitation at either lot
+tide_visit <- ggplot(data = day_tide,
+       mapping = aes(x = (low*3.2808399),
+                     y = events, color = dow, alpha = 0.2)) +
+  scale_color_manual(values = cal_palette(name = 'tidepool', n = 7,
+                                          type = 'continuous')) + 
+  geom_point() + 
+  geom_vline(xintercept = 0.7, linetype = 'dashed', color = 'gray') +
+  coord_cartesian(ylim = c(0,3000)) + 
+  scale_x_continuous(breaks = scales::pretty_breaks()) + 
+  xlab('Lowest tide level 7AM - 7PM (ft below MLLW)') + 
+  ylab('Visiors') +
+  facet_wrap(~lot) 
+
+ggsave(filename = './figs/visit_tideht_light.png',
+       plot = tide_visit + lltheme_light + theme(legend.position = 'none'))
+
+ggsave(filename = './figs/visit_tideht_dark.png',
+       plot = tide_visit + lltheme_dark + theme(legend.position = 'none'))
+
+# linear relationship?
+summary(lm(events ~ low, data = filter(day_tide, lot == 'Lot 1'))) # no
+
+# do hour-by-hour, tidelvl vs events
 ggplot(data = tmdata,
        mapping = aes(x = tidelvl, y = events, color = lot)) + 
   geom_point() + 
-  facet_wrap(~lot)
+  facet_wrap(~lot) + 
+  lltheme_light
 
 # since low tides are special days, use matched dow approach, offset by 1 week?
 lt <- select(weekday, lot, dte, low_tide_lvl, events, dow) %>%
@@ -497,11 +605,10 @@ lt <- select(weekday, lot, dte, low_tide_lvl, events, dow) %>%
 
 # run t-test
 t.test(lt$dif)
-# yes (t = 3.50, df = 1653, p < 0.001)
+# yes (t = 3.50, df = 1653, p < 0.001, mean difference is 11-39 people...not relevant)
 
 # get dates of holidays from OPM
 holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
-
 
 # remove holidays and test
 lt_no_holiday <- lt %>%
