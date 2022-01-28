@@ -388,6 +388,9 @@ return(pr_t_test)
 # run paired t-test function
 holiday_test <- pr_t(holidates)
 
+# write csv of results
+write_csv(holiday_test, './stats/holiday_t_test.csv')
+
 # make Holiday an ordered factor (by day of year)
 day_order <- holidates %>%
   arrange(month(date), day(date)) %>%
@@ -758,3 +761,6 @@ ggplot(data = fee_free2) +
         axis.text = element_text(color = 'white'))
 
 ggsave('./figs/visitation_feefree_dark.png', width = 8)
+
+# write test results
+write_csv(fee_test, './stats/fee_free_day_t_test.csv')
