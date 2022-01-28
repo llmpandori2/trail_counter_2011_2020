@@ -353,28 +353,40 @@ holidates <- rbind(mutate(holidates, lot = 'Lot 1'),
   # get complete cases (holidays w data for both the day of and +14 days)
   na.omit() %>%
   # get difference between holiday and +14 days
-  mutate(dif = visit0 - visit14)
+  mutate(dif = visit0 - visit14) %>%
+  select(lot:holiday, dif, visit0, visit14)
 
-holidates2 <- select(holidates, lot:holiday, dif, visit0, visit14)
+# pr_t(dataset) = paired t-test function (use for holidays, tides, fee free day analyses)
+# dataset for holiday data = holidates2
+# compare vectors named visit0 and visit14
 
-holiday_test <- holidates2 %>%
+pr_t <- function(dataset) {
+  
+pr_t_test <- dataset %>%
+  # group by "holiday" and lot
   group_by(holiday, lot) %>%
   nest() %>%
+  # perform paired t-test between visit0 and visit14
   mutate(fit =  map(data, ~ t.test(.x$visit0, .x$visit14, paired = TRUE)),
          result = map(fit, broom::glance)) %>%
   unnest(c(data, result)) %>%
-  select(lot, holiday, visit0, visit14, statistic:parameter) %>%
+  select(lot, holiday, visit0, visit14, dif, statistic:parameter) %>%
   clean_names() %>%
   rename(f_value = statistic, df = parameter) %>%
-  # get dif
-  mutate(dif = visit0-visit14) %>%
-  # summarize by lot + holiday
+  # summarize by lot + holiday, and add column for pvalue significance
   ungroup() %>%
   group_by(lot, holiday, p_value, df, f_value) %>%
   summarize(mean_dif = mean(dif), 
             sd_dif = sd(dif),
+            se_dif = sd(dif)/length(dif),
             pval_sig = p_value <= 0.05) %>%
   distinct()
+
+return(pr_t_test)
+}
+
+# run paired t-test function
+holiday_test <- pr_t(holidates)
 
 # make Holiday an ordered factor (by day of year)
 day_order <- holidates %>%
@@ -386,8 +398,8 @@ holiday_test$holiday <- fct_relevel(holiday_test$holiday, day_order$holiday)
 # plot results as barplot with se and * if significant
 ggplot(data = holiday_test) + 
   geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
-  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
-                              ymax = (mean_dif + sd_dif), width = 0.3),
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - se_dif), 
+                              ymax = (mean_dif + se_dif), width = 0.3),
                 color = if_else(holiday_test$pval_sig == 'TRUE', 'gray48', 
                                 cal_palette('tidepool')[4])) + 
   scale_fill_manual(values = c(cal_palette('tidepool')[4], cal_palette('tidepool')[1])) + 
@@ -396,7 +408,7 @@ ggplot(data = holiday_test) +
   geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
             color = 'black', hjust = 0, size = 3.5) + 
   geom_text(data = filter(holiday_test, pval_sig == TRUE),
-            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + se_dif + 100), 
                           label = '*'), color = 'black') +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') + 
   coord_flip(xlim = c(1,14)) +
@@ -416,8 +428,8 @@ ggsave('./figs/visitation_holiday_light.png', width = 8)
 # plot results as barplot with se and * if significant
 ggplot(data = holiday_test) + 
   geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
-  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
-                              ymax = (mean_dif + sd_dif), width = 0.3),
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - se_dif), 
+                              ymax = (mean_dif + se_dif), width = 0.3),
                 color = if_else(holiday_test$pval_sig == 'FALSE', 'gray48', 'gray')) + 
   scale_fill_manual(values = c(cal_palette('tidepool')[2], cal_palette('tidepool')[1])) + 
   geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
@@ -425,7 +437,7 @@ ggplot(data = holiday_test) +
   geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
             color = 'white', hjust = 0, size = 3.5) + 
   geom_text(data = filter(holiday_test, pval_sig == TRUE),
-            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + se_dif + 100), 
                           label = '*'), color = 'white') +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'white') + 
   coord_flip(xlim = c(1,14)) +
@@ -441,7 +453,7 @@ ggplot(data = holiday_test) +
 
 ggsave('./figs/visitation_holiday_dark.png', width = 8)
 
-remove(holiday_test, holidates2, holidates)
+remove(holiday_test, holidates)
 
 ##### supplement - heat map of visitors by month and year #####
 
@@ -623,49 +635,126 @@ t.test(lt_no_holiday$dif)
 # there is no difference among dow
 kruskal.test(dif ~ dow, data = filter(lt_no_holiday, lot == 'Lot 1'))
 # chi2 = 4.75, df = 6, p = 0.58
+# no
 
-# rudimentary fig 
-ggplot(data = lt_no_holiday,
-       mapping = aes(x = dif, y = fct_rev(dow), fill = dow)) + 
-  geom_boxplot() +
-  geom_vline(xintercept = 0, linetype = 'dashed', color = 'black') + 
-  coord_cartesian(xlim = c(-1500,1500)) +
-  scale_x_continuous(breaks = c(-1500,-1000,-500,0,500,1000,1500)) + 
-  scale_color_manual(values = cal_palette(name = 'dudleya', n = 7,
-                                          type = 'continuous')) + 
-  scale_fill_manual(values = cal_palette(name = 'dudleya', n = 7, 
-                                         type = 'continuous')) + 
-  xlab('Difference in Visitation') + 
-  ylab('Day of Week') +
-  facet_wrap(~lot, scales = 'free_x') + 
+##### supplement - fee free day #####
+
+# get dates of holidays from OPM
+fee_free <- read_excel("data/accessory/NPS_Fee_Free_Days_2011_2020.xlsx")
+
+# get difference in visitation for fee free days and + 14 days to compare
+fee_free <- rbind(mutate(fee_free, lot = 'Lot 1'),
+                  mutate(fee_free, lot = 'Lot 2')) %>%
+  mutate(dte = date(date)) %>%
+  rename(holiday = event) %>%
+  select(-date) %>%
+  # get number of visitors on fee free days 
+  left_join(., select(weekday, lot, dte, events), by = c('lot', 'dte')) %>%
+  # rename joined values
+  rename(dte0 = dte, visit0 = events) %>%
+  # get + 14 days from fee free date and match w events data
+  mutate(dte = dte0 + days(14)) %>%
+  left_join(., select(weekday, lot, dte, events), by = c('lot', 'dte')) %>%
+  # rename new columns and get difference in events b/w fee free and not, get dow
+  rename(dte14 = dte, visit14 = events) %>%
+  mutate(dif = visit0 - visit14) %>%
+  # only include complete cases
+  na.omit()
+
+# get sample sizes
+fee_n <- fee_free %>%
+  group_by(holiday, lot) %>%
+  tally() %>%
+  filter(n > 4) %>%
+  select(holiday) %>%
+  distinct()
+
+
+# pr_t(dataset) = paired t-test function (use for holidays, tides, fee free day analyses)
+# dataset for holiday data = holidates2
+# compare vectors named visit0 and visit14
+# test if difference in visitation is significantly different from 0 - for holidays with n .=5
+
+fee_test <- pr_t(filter(fee_free, holiday %in% fee_n$holiday))
+
+# put back in data for "holidays"/fee free days without 5 samples
+fee_free2 <- full_join(fee_test, 
+                       fee_free %>%
+                          filter(holiday %notin% fee_n$holiday) %>%
+                          group_by(lot, holiday) %>%
+                          summarize(mean_dif = mean(dif),
+                                    n = length(dif))) %>%
+            # add column with significant, not significant or no test
+            mutate(`T-test` = case_when(p_value < 0.05 ~ 'Significant',
+                                        p_value > 0.05 ~ 'Not significant',
+                                        TRUE ~ 'n < 5'))
+
+# make day an ordered factor (by day of year)
+day_order <- fee_free %>%
+  arrange(month(dte0), day(dte0)) %>%
+  distinct(holiday)
+
+fee_free2$holiday <- fct_relevel(fee_free2$holiday, day_order$holiday)
+
+# plot results as barplot with se and * if significant
+ggplot(data = fee_free2) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = fct_rev(`T-test`))) + 
+  geom_errorbar(data = filter(fee_free2, `T-test` != 'No test'),
+                mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
+                              ymax = (mean_dif + sd_dif), width = 0.3),
+          color = if_else(filter(fee_free2, `T-test` != 'No test')$pval_sig == 'TRUE',
+                                'gray48', cal_palette('tidepool')[4])) + 
+  scale_fill_manual(values = c(cal_palette('tidepool')[1], cal_palette('tidepool')[4],
+                               'gray90')) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
+            color = 'black', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'black', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(fee_free2, pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+                          label = '*'), color = 'black') +
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') +
+  coord_flip(xlim = c(1,14), ylim = c(-1300,1300)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
+  ylab('Difference in visitation') + 
+  xlab('Fee free day') +
+  labs(fill = 'T-test result') + 
+  facet_wrap(~lot) + 
   lltheme_light + 
-  theme(legend.position = 'none')
+  theme(panel.grid = element_blank(),
+        text = element_text(color = 'black', size = 12),
+        axis.text = element_text(color = 'black'))
 
-ggsave('./figs/visitation_dif_lowtide_light.png',
-       width = 5, height = 5)
-
-
-
+ggsave('./figs/visitation_feefree_light.png', width = 8)
 
 
+# plot results as barplot with se and * if significant
+ggplot(data = fee_free2) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = fct_rev(`T-test`))) + 
+  geom_errorbar(data = filter(fee_free2, `T-test` != 'No test'),
+                mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - sd_dif), 
+                              ymax = (mean_dif + sd_dif), width = 0.3),
+                color = if_else(filter(fee_free2, `T-test` != 'No test')$pval_sig == 'TRUE',
+                                cal_palette('tidepool')[4], 'gray48')) + 
+  scale_fill_manual(values = c(cal_palette('tidepool')[1], cal_palette('tidepool')[2],
+                               'gray20')) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Less visitors'), 
+            color = 'white', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'white', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(fee_free2, pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + sd_dif + 100), 
+                          label = '*'), color = 'white') +
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'white') +
+  coord_flip(xlim = c(1,14), ylim = c(-1300,1300)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500)) +
+  ylab('Difference in visitation') + 
+  xlab('Fee free day') +
+  labs(fill = 'T-test result') + 
+  facet_wrap(~lot) + 
+  lltheme_dark + 
+  theme(panel.grid = element_blank(),
+        text = element_text(color = 'white', size = 12),
+        axis.text = element_text(color = 'white'))
 
-
-
-
-  
-
-
-
-
-  
-
-
-  
-    
-  
-
-
-
-
-
-
+ggsave('./figs/visitation_feefree_dark.png', width = 8)
