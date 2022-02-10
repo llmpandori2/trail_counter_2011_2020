@@ -55,7 +55,7 @@ lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
 ##### tidy data #####
 
 # trail counter 'event' data
-tmdata <- read_csv("data/TM_Data_QC.csv", 
+tmdata <- read_csv("./data/TM_Data_QC.csv", 
          col_types = cols(hourlydrybulbtemperature = col_double(),
                           hourlywindspeed = col_double(), 
                           hourlyprecipitation = col_double()))
@@ -84,7 +84,7 @@ tmdata <- tmdata %>%
 
   # continuous tide data
   tide_cont <- read_csv(
-    "data/accessory/TrailMaster_XTide_2010_2025_Needs_Overlap_Correction.csv", 
+    "./data/accessory/TrailMaster_XTide_2010_2025_Needs_Overlap_Correction.csv", 
     col_types = cols(datetime_round = col_datetime(format = "%m/%d/%Y %H:%M")))
   
   # get data only on the hour
@@ -100,7 +100,7 @@ tmdata <- tmdata %>%
     mutate(dte = date(dtime))
   
   # lowest tide of the day
-  low_tide <- read_excel("data/accessory/TrailMaster_Sunrise_Sunset_Tides_Time_2010_2026.xlsx")
+  low_tide <- read_excel("./data/accessory/TrailMaster_Sunrise_Sunset_Tides_Time_2010_2026.xlsx")
   
   # get only low tide data
   low_tide2 <- low_tide %>%
@@ -168,7 +168,7 @@ visit_est %>%
 ##### question 1b - visitation figure w/ entrance over years #####
   
 # load entrance station visitation data from IRMA
-entrance <- read_csv("data/accessory/entrance_IRMA_visitation_2011_2020.csv")
+entrance <- read_csv("./data/accessory/entrance_IRMA_visitation_2011_2020.csv")
   
 visit_est <- rbind(visit_est %>%
                         select(-Coverage) %>% rename(Location = Lot),
@@ -210,7 +210,7 @@ remove(entrance)
 ##### question 2 - visitation across days of the week (holidays excluded) #####
 
 # list of OPM holidays
-holidays <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx") %>%
+holidays <- read_excel("./data/accessory/OPM_Holidays_2010_2020.xlsx") %>%
   mutate(dte = date(date)) %>%
   select(dte)
 
@@ -336,7 +336,7 @@ remove(hsd, weekday_n, fn_aov_hsd)
 ##### question 3 - Visitation on holidays/non-holidays? #####
 
 # get dates of holidays from OPM
-holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
+holidates <- read_excel("./data/accessory/OPM_Holidays_2010_2020.xlsx")
 
 # get difference in visitation for holidays and +14 days from holidays to compare
 ## chosen b/c same dow and similar tide cycle stage
@@ -663,7 +663,7 @@ t.test(lt$dif)
 # yes (t = 3.50, df = 1653, p < 0.001, mean difference is 11-39 people...not relevant)
 
 # get dates of holidays from OPM
-holidates <- read_excel("data/accessory/OPM_Holidays_2010_2020.xlsx")
+holidates <- read_excel("./data/accessory/OPM_Holidays_2010_2020.xlsx")
 
 # remove holidays and test
 lt_no_holiday <- lt %>%
@@ -682,7 +682,7 @@ kruskal.test(dif ~ dow, data = filter(lt_no_holiday, lot == 'Lot 1'))
 ##### supplement - fee free day #####
 
 # get dates of holidays from OPM
-fee_free <- read_excel("data/accessory/NPS_Fee_Free_Days_2011_2020.xlsx")
+fee_free <- read_excel("./data/accessory/NPS_Fee_Free_Days_2011_2020.xlsx")
 
 # get difference in visitation for fee free days and + 14 days to compare
 fee_free <- rbind(mutate(fee_free, lot = 'Lot 1'),

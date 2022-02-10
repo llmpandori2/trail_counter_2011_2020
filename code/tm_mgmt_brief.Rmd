@@ -2,15 +2,15 @@
 title: "Untitled"
 author: "LPandori"
 date: "2/10/2022"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 # set document knitr options
 knitr::opts_chunk$set(message = F, warning = F, echo = F)
 
-# run tm_data_analysis code to set up environment
-
+# run tm_data_analysis script to set up environment
+devtools::source_url('https://github.com/llmpandori2/trail_counter_2011_2020/blob/main/code/tm_data_analysis.R')
 ```
 
 ## R Markdown
