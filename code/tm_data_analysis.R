@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 2/3/22
+### Last Edited: 2/10/22
 ###############################################################################
 
 ##### load packages #####
@@ -205,7 +205,7 @@ ggsave(filename = paste('./figs/visitation_year_light_.png', sep = ''),
          lltheme_light, 
        height = 5)
 
-remove(visit_time_plot, entrance)
+remove(entrance)
 
 ##### question 2 - visitation across days of the week (holidays excluded) #####
 
@@ -331,7 +331,7 @@ ggsave(filename = './figs/vistation_dow_dark.png',
                axis.text.x = element_text(size = 11, angle = 45, hjust = 1)) ,
        width = 7, height = 5)
 
-remove(dow_box, hsd, weekday_n, fn_aov_hsd, visit_est)
+remove(hsd, weekday_n, fn_aov_hsd)
 
 ##### question 3 - Visitation on holidays/non-holidays? #####
 
@@ -462,7 +462,7 @@ ggplot(data = holiday_test) +
 
 ggsave('./figs/visitation_holiday_dark.png',  width = 7, height = 5)
 
-remove(holiday_test, holidates)
+remove(holidates)
 
 ##### supplement - heat map of visitors by month and year #####
 
@@ -498,8 +498,6 @@ ggsave('./figs/heatmap_visits_month_year_light.png',
 
 ggsave('./figs/heatmap_visits_month_year_dark.png',
        visit_heatmap + lltheme_dark + theme(panel.grid = element_blank()))
-
-remove(visit_heatmap, visit_est)
   
 ##### question 4 - visitation by time of day (by dow, holidays excluded) #####
 
@@ -548,8 +546,6 @@ ggsave(filename = './figs/tod_ridgeline_light.png',
          lltheme_light + 
          theme(legend.position = 'none'),
        width = 7, height = 5)
-
-remove(tod_ridge, tod)
 
 ##### question 5 - visitation by tide level ("good" tides < 0.7 ft below MLLW) #####
 
