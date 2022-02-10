@@ -467,7 +467,7 @@ remove(holidates)
 
 ##### supplement - heat map of visitors by month and year #####
 
-visit_est <- ungroup(tmdata) %>%
+visit_est2 <- ungroup(tmdata) %>%
   mutate(yr = as_factor(year(dtime)),
          mo = month(dtime, label = TRUE),
          dpm = case_when(mo %in% c('Sep', 'Apr', 'Jun', 'Nov') ~ 30,
@@ -487,7 +487,7 @@ visit_est <- ungroup(tmdata) %>%
   group_by(yr, mo) %>%
   summarize(Visitors = sum(visit_corrected))
 
-visit_heatmap <- ggplot(data = visit_est,
+visit_heatmap <- ggplot(data = visit_est2,
          mapping = aes(x = mo, y = yr, fill = Visitors)) + 
   geom_tile() +
   xlab('Month') + 
