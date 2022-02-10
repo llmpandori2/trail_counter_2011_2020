@@ -11,8 +11,8 @@ output: pdf_document
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, include = FALSE)
 
 # run tm_data_analysis script to set up environment
-setwd()
-devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/code/tm_data_analysis.R')
+setwd('D:/LP_Files/RStudio_Files/trail_counter_2011_2020')
+devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/scripts/tm_data_analysis.R')
 
 
 devtools::source_url("https://raw.githubusercontent.com/KateMMiller/IMD_R_Training_Advanced/main/Generate_fake_invasive_data_and_plots.R")

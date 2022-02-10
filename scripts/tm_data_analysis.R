@@ -20,6 +20,8 @@ library(gt)         # gg tables
 library(tidyverse)  # tidy everything
 
 ##### presets #####
+# set wd so it works in md
+setwd('D:/LP_Files/RStudio_Files/trail_counter_2011_2020')
 
 # 'not in' operator
 `%notin%` <- Negate(`%in%`)
@@ -53,7 +55,6 @@ lltheme_dark <- dark_theme_bw() + theme(text = element_text(size = 12),
                               panel.grid = element_blank())
 
 ##### tidy data #####
-
 # trail counter 'event' data
 tmdata <- read_csv("./data/TM_Data_QC.csv", 
          col_types = cols(hourlydrybulbtemperature = col_double(),
