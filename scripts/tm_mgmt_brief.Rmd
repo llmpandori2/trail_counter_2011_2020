@@ -1,39 +1,91 @@
 ---
-title: "Untitled"
-author: "LPandori"
+title: "Coastal Area Visitation Report 2011-2020"
+author: "Lauren Pandori"
 date: "2/10/2022"
-output: pdf_document
+output: html_document
 ---
 
 ```{r setup, message = FALSE, warning = FALSE, include=FALSE}
+
+# load libraries
+library(tinytex)           # latex library for pdf conversion
+library(formattable)       # nice tables
+library(DT)                # interactive tables
+
 
 # set document knitr options
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, include = FALSE)
 
 # run tm_data_analysis script to set up environment
-setwd('D:/LP_Files/RStudio_Files/trail_counter_2011_2020')
 devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/scripts/tm_data_analysis.R')
 
-
-devtools::source_url("https://raw.githubusercontent.com/KateMMiller/IMD_R_Training_Advanced/main/Generate_fake_invasive_data_and_plots.R")
 ```
 
-## R Markdown
+## Trail Counters Deployed 2011-2020
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The coastal area of Cabrillo National Monument contains valued and rare natural resources in southern California, including: sea cliff, maritime sage scrub and rocky intertidal habitat. The number of visitors, or visitation, to the coastal area has been monitored 2011-2020 using infrared trail counters positioned along the Coastal Trail near two entrances to the area (Lot 1 and Lot 2 along Gatchell Road in San Diego, CA, USA). Data from over 600 files, documenting over 4 million visitors to the coastal area of Cabrillo National Monument, are synthesized in this report to answer the following questions: 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+1.	How many people visit the coastal area each year?
+2.	Does visitation differ across days of the week?
+3.	Is visitation higher on days with low tides (less than 0.7 ft) during park hours?
+4.	Is visitation higher on holidays?
 
-```{r cars}
-summary(cars)
+### Annual Coastal Area Visits
+
+- In 2020, 380,920 people visited the coastal area, which accounts for 73% of visitors entering the park
+- Despite declines in overall park visitation, the number of coastal area visitors has increased over time
+
+```{r annual visitor table, echo = FALSE}
+# make visit_est into an interactive table
+visit_table <- visit_est %>%
+  # more human-friendly table layout
+  pivot_wider(names_from = 'Location', values_from = 'Visitors') %>%
+  # some math for total visitation to coastal area
+  mutate(`Coastal area` = round(`Lot 1` + `Lot 2`, digits = 0),
+         # math to get percent of visitors to coastal area
+         `Percent of all visitors in coastal area` = round(`Coastal area`/(`Coastal area` + `Entrance station`)*100, digits = 0)) %>%
+  # select relevant columns in order to be presented
+  select(Year, `Entrance station`, `Coastal area`, `Percent of all visitors in coastal area`)
+
+# create formatted table
+formattable(visit_table,
+            # L justify columns
+            align = 'l',
+            # column list for custom formatting
+            list(
+            # create bar for % of total visitors to coastal area
+            `Percent of all visitors in coastal area` = color_bar
+            (cal_palette('tidepool')[1])))
 ```
 
-## Including Plots
+### Visitation is highest on weekends
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r dow visitation, echo = F,  width = 5, height = 5}
+# what this needs: weekday, lltheme_light
+
+# setup plot
+dow_box <- ggplot(data = filter(weekday, lot == 'Lot 1'),
+                   mapping = aes(x = dow, y = events, fill = dow, 
+                                 color = dow, alpha = 0.2)) +
+              geom_jitter(alpha = 0.3, size = 0.7) + 
+
+              coord_cartesian(ylim = c(0,2500)) +
+              scale_y_continuous(labels = scales::label_number(big.mark = ',')) +
+              scale_color_manual(values = cal_palette(name = 'tidepool', n = 7,
+                                                      type = 'continuous')) + 
+              scale_fill_manual(values = cal_palette(name = 'tidepool', n = 7, 
+                                                      type = 'continuous')) + 
+              xlab('Day of week') + 
+              ylab('Visitors per day')  
+
+dow_box + geom_boxplot(color = 'black', outlier.shape = NA) + 
+         lltheme_light + 
+         theme(legend.position = 'none',
+               panel.grid.major = element_blank(),
+               panel.grid.minor = element_blank(),
+               axis.text.x = element_text(size = 12, angle = 45, hjust = 1))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
