@@ -1,0 +1,175 @@
+---
+title: 'Coastal Area Visitation Brief 2011-2020'
+author: 'Lauren Pandori'
+output:
+  html_document: 
+    code_folding: hide
+---
+
+```{r setup, message = FALSE, warning = FALSE, include = FALSE}
+
+# load libraries
+library(tinytex)           # latex library for pdf conversion
+library(formattable)       # nice tables
+library(plotly)            # interactive figures
+
+
+# set document knitr options
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, include = TRUE)
+
+# run tm_data_analysis script to set up environment
+devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/scripts/tm_data_analysis.R')
+
+```
+
+### Trail Counters Deployed 2011-2020
+
+The coastal area of Cabrillo National Monument contains valued and rare natural resources in southern California, including: sea cliff, maritime sage scrub and rocky intertidal habitat. The number of visitors, or visitation, to the coastal area has been monitored 2011-2020 using infrared trail counters positioned along the Coastal Trail near two entrances to the area (Lot 1 and Lot 2 along Gatchell Road in San Diego, CA, USA). Data from over 600 files, documenting over 4 million visitors to the coastal area of Cabrillo National Monument, are synthesized in this report to answer the following questions: 
+
+1.	How many people visit the coastal area each year?
+2.	Does visitation differ across days of the week?
+3.	Is visitation higher on days with low tides (less than 0.7 ft) during park hours?
+4.	Is visitation higher on holidays?
+
+### Annual coastal area visits
+
+- In 2020, 380,920 people visited the coastal area, which accounts for 73% of visitors entering the park
+- Despite fluctuations in the number of visitors entering the entrance station, the number of coastal area visitors has increased over time
+
+```{r annual visitor table, out.width = '50%', fig.cap = 'Table of visitation to the entrance station, Lot 1 and Lot 2 between 2011 and 2020.', fig.align = 'center'}
+# make visit_est into an interactive table
+visit_table <- visit_est %>%
+  # more human-friendly table layout
+  pivot_wider(names_from = 'Location', values_from = 'Visitors') %>%
+  # some math for total visitation to coastal area
+  mutate(`Coastal area` = round(`Lot 1` + `Lot 2`, digits = 0),
+         # math to get percent of visitors to coastal area
+         `Percent of all visitors in coastal area` = 
+           scales::percent(`Coastal area`/(`Coastal area` + `Entrance station`),
+                           accuracy = 0.1)) %>%
+  # select relevant columns in order to be presented
+  select(Year, `Entrance station`, `Coastal area`, 
+         `Percent of all visitors in coastal area`)
+
+# create formatted table
+visit_table_static <- formattable(visit_table,
+            # L justify columns
+            align = 'l',
+            # column list for custom formatting
+            list(
+            # create bar for % of total visitors to coastal area
+            `Percent total visitors to coastal area` = color_tile
+            (cal_palette('tidepool')[1])))
+
+DT::datatable(visit_table_static,
+              # display table only 
+              options = list(dom = 't'),
+              # stripe and add borders to cells
+              class = 'cell-border stripe',
+              # no first numbered row
+              rownames = FALSE,
+              # make caption for table
+              caption = 'Visitors to Cabrillo National Monument 2011-2020') 
+
+
+remove(visit_table, visit_est2, visit_table_static)
+```
+
+### Visitation is highest on weekends
+
+- Visitation highest on weekend days (Saturday and Sunday)
+- Midweek visitation (Tuesday-Thursday) is lower than weekend edge days (Monday and Friday)
+
+```{r dow visitation}
+
+# setup plot
+dow_static <- ggplot(data = filter(weekday, lot == 'Lot 1' & events >= 10),
+                   mapping = aes(x = dow, y = events, fill = dow, 
+                                 color = dow, alpha = 0.2)) +
+              geom_jitter(alpha = 0.3, size = 1) + 
+
+              coord_cartesian(ylim = c(0,2500)) +
+              scale_y_continuous(labels = scales::label_number(big.mark = ',')) +
+              scale_color_manual(values = cal_palette(name = 'tidepool', n = 7,
+                                                      type = 'continuous')) + 
+              scale_fill_manual(values = cal_palette(name = 'tidepool', n = 7, 
+                                                      type = 'continuous')) + 
+              xlab('Day of the week') + 
+              ylab('Visitors per day') + 
+         geom_boxplot(color = 'black', outlier.shape = NA) + 
+         lltheme_light + 
+         theme(legend.position = 'none',
+               panel.grid.major = element_blank(),
+               panel.grid.minor = element_blank(),
+               axis.text = element_text(size = 12, hjust = 1, color = 'black'),
+               axis.text.x = element_text(angle = 45),
+               aspect.ratio = 1)
+
+# this plot is too busy for interactivity - keep static
+dow_static
+```
+
+#### Tide level is unrelated to visitation
+
+- The number of visitors isn't higher during advertised "good" low tide events, where the tide level is less than 0.7 ft above Mean Lower Low Water (MLLW) 
+- Visitors may be unaware of tide levels before visiting
+
+```{r tide level}
+
+tide_static <- ggplot(data = filter(hr_tide, lot == 'Lot 1'),
+                     mapping = aes(x = (tidelvl*3.2808399),
+                                   y = events)) +
+  geom_point(color = cal_palette('tidepool')[1], alpha = 0.4) + 
+  geom_vline(xintercept = 0.7, linetype = 'dashed', color = 'gray40', size = 1) +
+  geom_text(mapping = aes(x = 0.8, y = 800, hjust = 0,
+                          label = 'Advertised tide level (0.7 ft)'), color = 'gray40') +
+  coord_cartesian(ylim = c(0,800)) + 
+  scale_x_continuous(breaks = scales::pretty_breaks()) + 
+  xlab('Tide level (ft relative to MLLW)') + 
+  ylab('Visitors per hour') +
+  lltheme_light +
+  theme(aspect.ratio = 1)
+
+ggplotly(tide_static)
+
+```
+
+#### Most holidays draw more visitors
+
+We compared the number of visitors on holidays paired with non-holidays that were 14 days after holidays. We included some holiday-adjacent days, such as the day after Thanksgiving, because staff noted high visitation on those days. 
+
+The plot below shows the difference in the number of visitors between holidays and paired non-holidays. Stars indicate significant differences in visitation (paired t-test p < 0.05).
+
+- There were more visitors on most holidays
+- Some holidays, such as Martin Luther King Jr. Day and Veterans Day are also fee-free days
+
+```{r holidays}
+
+ggplot(data = filter(holiday_test, lot == 'Lot 1')) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - se_dif), 
+                              ymax = (mean_dif + se_dif), width = 0.3), 
+                color = 'gray30') + 
+  scale_fill_manual(values = c(cal_palette('tidepool')[4], cal_palette('tidepool')[1])) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Fewer visitors'), 
+            color = 'gray40', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'gray40', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(holiday_test, lot == 'Lot 1' & pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + se_dif + 100), 
+                          label = '*'), color = 'black') +
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'gray40', size = 1) + 
+  coord_flip(xlim = c(1,14)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500), limits = c(-1200,1200)) +
+  ylab('Difference in visitation') + 
+  xlab('Holiday') +
+  lltheme_light + 
+  theme(legend.position = 'none',
+        panel.grid = element_blank(),
+        text = element_text(color = 'black', size = 12),
+        axis.text = element_text(color = 'black'),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        aspect.ratio = 1)
+
+```
+
