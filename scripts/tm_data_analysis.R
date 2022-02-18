@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 2/10/22
+### Last Edited: 2/17/22
 ###############################################################################
 
 ##### load packages #####
