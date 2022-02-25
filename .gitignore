@@ -2,17 +2,14 @@
 .Rhistory
 .Rapp.history
 
-# data files
-/data
-
-# figure files
-/figs
-
-# stats
-/stats
-
 # Session Data files
 .RData
+
+# raw data files
+/data/corrected_raw_data
+
+# tm_data_qc (can be found on CABR photos drive)
+/data/TM_Data_QC.csv
 
 # User-specific files
 .Ruserdata
