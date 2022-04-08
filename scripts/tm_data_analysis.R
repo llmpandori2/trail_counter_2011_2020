@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 2/17/22
+### Last Edited: 3/31/22
 ###############################################################################
 
 ##### load packages #####
@@ -13,7 +13,6 @@ library(readxl)     # read excel files
 library(janitor)    # clean up datasets
 library(lubridate)  # math w dates and times
 library(calecopal)  # remarkable color palette
-library(viridis)    # another color palette
 library(ggdark)     # dark field gg themes
 library(ggridges)   # ridgeline plot
 library(gt)         # gg tables
@@ -193,7 +192,9 @@ ggsave(filename = paste('./figs/visitation_year_dark_.png', sep = ''),
        plot = visit_time_plot + 
               scale_color_manual(values = c(cal_palette('tidepool')[1],
                                             cal_palette('tidepool')[4],
-                                            cal_palette('tidepool')[5])) +
+                                            cal_palette('tidepool')[5]),
+                                 labels = c('Entrance station', 
+                                            'Tidepool Parking', 'Coast View Parking' )) +
               lltheme_dark, 
        height = 5)
 
@@ -202,9 +203,14 @@ ggsave(filename = paste('./figs/visitation_year_light_.png', sep = ''),
        plot = visit_time_plot + 
          scale_color_manual(values = c(cal_palette('tidepool')[1],
                                        cal_palette('tidepool')[2],
-                                       cal_palette('tidepool')[5])) +
+                                       cal_palette('tidepool')[5]),
+                            labels = c('Entrance station', 
+                                       'Tidepool Parking', 'Coast View Parking' )) +
          lltheme_light, 
        height = 5)
+
+# get average annual entrance station visitation 2011-2020
+mean(filter(visit_est, Location == 'Entrance station')$Visitors)
 
 remove(entrance)
 
@@ -299,7 +305,8 @@ dow_box <- ggplot(data = weekday,
                                                       type = 'continuous')) + 
               xlab('Day of week') + 
               ylab('Visitors per day') + 
-              facet_wrap(~lot) 
+              facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                                      'Lot 2' = 'Coast View Parking')))
 
 # save light field and dark field versions
 ggsave(filename = './figs/vistation_dow_light.png',
@@ -408,9 +415,8 @@ ggplot(data = holiday_test) +
   geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
   geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - se_dif), 
                               ymax = (mean_dif + se_dif), width = 0.3),
-                color = if_else(holiday_test$pval_sig == 'TRUE', 'gray48', 
-                                cal_palette('tidepool')[4])) + 
-  scale_fill_manual(values = c(cal_palette('tidepool')[4], cal_palette('tidepool')[1])) + 
+                color =  'gray48') + 
+  scale_fill_manual(values = c('gray85', cal_palette('tidepool')[1])) + 
   geom_text(mapping = aes(x = 14, y = -100, label = 'Fewer visitors'), 
             color = 'black', hjust = 0.95, size = 3.5) + 
   geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
@@ -423,7 +429,8 @@ ggplot(data = holiday_test) +
   scale_y_continuous(breaks = seq(-1000,1000, by = 500), limits = c(-1200,1200)) +
   ylab('Difference in visitation') + 
   xlab('Holiday') +
-  facet_wrap(~lot) + 
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) + 
   lltheme_light + 
   theme(legend.position = 'none',
         panel.grid = element_blank(),
@@ -453,7 +460,8 @@ ggplot(data = holiday_test) +
   scale_y_continuous(breaks = seq(-1000,1000, by = 500), limits = c(-1200,1200)) +
   ylab('Difference in visitation') + 
   xlab('Holiday') +
-  facet_wrap(~lot) + 
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) + 
   lltheme_dark + 
   theme(legend.position = 'none',
         panel.grid = element_blank(),
@@ -492,7 +500,7 @@ visit_heatmap <- ggplot(data = visit_est2,
   geom_tile() +
   xlab('Month') + 
   ylab('Year') +
-  scale_fill_gradientn(colors = c(cal_palette('tidepool')[3], cal_palette('tidepool')[1]))
+  scale_fill_gradientn(colors = c(cal_palette('tidepool')[1], cal_palette('tidepool')[3]))
 
 ggsave('./figs/heatmap_visits_month_year_light.png',
        visit_heatmap + lltheme_light + theme(panel.grid = element_blank()))
@@ -528,7 +536,8 @@ tod_ridge <- ggplot(data = tod) +
   scale_x_continuous(breaks = c(7,9,11,13,15,17,19), limits = c(7,19)) + 
   xlab('Hour of day') + 
   ylab('Visitor activity') +
-  facet_wrap(~lot)
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking')))
 
 # save dark theme version
 ggsave(filename = './figs/tod_ridgeline_dark.png',
@@ -572,8 +581,9 @@ tide_hr_visit <- ggplot(data = hr_tide,
   coord_cartesian(ylim = c(0,800)) + 
   scale_x_continuous(breaks = scales::pretty_breaks()) + 
   xlab('Tide level (ft relative to MLLW)') + 
-  ylab('Visiors') +
-  facet_wrap(~lot) 
+  ylab('Hourly visitors') +
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) 
 
 ggsave(filename = './figs/visit_tideht_hr_light.png',
        plot = tide_hr_visit + lltheme_light + theme(legend.position = 'none'),
@@ -614,7 +624,8 @@ tide_visit <- ggplot(data = day_tide,
   scale_x_continuous(breaks = scales::pretty_breaks()) + 
   xlab('Lowest tide level 7AM - 7PM (ft below MLLW)') + 
   ylab('Visiors') +
-  facet_wrap(~lot) 
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) 
 
 ggsave(filename = './figs/visit_tideht_day_light.png',
        plot = tide_visit + lltheme_light + theme(legend.position = 'none'),
@@ -661,7 +672,7 @@ lt <- select(weekday, lot, dte, low_tide_lvl, events, dow) %>%
 
 # run t-test
 t.test(lt$dif)
-# yes (t = 3.50, df = 1653, p < 0.001, mean difference is 11-39 people...not relevant)
+# yes (t = 3.50, df = 1653, p < 0.001, mean difference is 11-39 people...not meaningful)
 
 # get dates of holidays from OPM
 holidates <- read_excel("./data/accessory/OPM_Holidays_2010_2020.xlsx")
@@ -762,7 +773,8 @@ ggplot(data = fee_free2) +
   ylab('Difference in visitation') + 
   xlab('Fee free day') +
   labs(fill = 'T-test result') + 
-  facet_wrap(~lot) + 
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) + 
   lltheme_light + 
   theme(panel.grid = element_blank(),
         text = element_text(color = 'black', size = 12),
@@ -795,7 +807,8 @@ ggplot(data = fee_free2) +
   ylab('Difference in visitation') + 
   xlab('Fee free day') +
   labs(fill = 'T-test result') + 
-  facet_wrap(~lot) + 
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) + 
   lltheme_dark + 
   theme(panel.grid = element_blank(),
         text = element_text(color = 'white', size = 12),
