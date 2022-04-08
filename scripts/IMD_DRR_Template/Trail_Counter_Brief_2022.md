@@ -34,72 +34,13 @@ output:
     number_sections: false
 ---
 
-```{r md setup, include=FALSE}
 
-# set knitr options for all chunks
-knitr::opts_chunk$set(
-   root.dir = params$projectDir,  # from YAML parameter, knitr instead of setwd()
-   echo = TRUE,
-   comment = " ",
-   dev = "svg",
-   fig.path = "figures/",
-   tidy.opts = list(width.cutoff = 60),
-   tidy = TRUE
-   )
 
-# if ggplot, update theme to default to centered titles
-if ("ggplot2" %in% .packages()) {
-   theme_update(plot.title = element_text(hjust = 0.5))
-}
 
-# Set up table template
-NPS_theme <- function(x, ...) {
-    x <- colformat_double(x, big.mark = ",", decimal.mark = ".", digits = 1)
-    x <- colformat_int(x, big.mark = ",")
-    x <- colformat_date(x,fmt_date = "%Y-%m-%d")
-    x <- set_table_properties(x, layout = "fixed")
-    x <- border_remove(x)
-    std_border <- fp_border_default(width = 1, color = "black")
-    x <-hline_bottom(x,part="body")
-    x <-hline_bottom(x,part="header")
-    x <-hline_top(x,part="header")
-    x <-bold(x,bold=TRUE,part="header")
-    x <-set_table_properties(x, width = 0, layout = "autofit")
-    x <-align_nottext_col(x, align = "right", header = TRUE, footer = TRUE)
-    x <-align_text_col(x, align = "left", header = TRUE, footer = TRUE)
-    x <-valign(x,valign="bottom",part="header")
-    x <-valign(x,valign="top",part="body")
-}
-
-set_flextable_defaults(
-  font.family = "Arial", 
-  font.size = 9,
-  font.color = "black",
-  theme_fun = NPS_theme,
-  )
-
-# set working directory (from YAML)
-setwd(params$projectDir)
-```
-
-```{r data setup, include=FALSE}
-
-# load libraries
-library(tinytex)           # latex library for pdf conversion
-library(formattable)       # nice tables
-
-# run tm_data_analysis script to set up environment
-devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/scripts/tm_data_analysis.R')
-
-```
 
 <hr>
-## Background & Introduction
-Cabrillo National Monument (San Diego, CA, USA) is a pint-sized unit of the National Park System (160 terrestrial acres) that attracts an average of 850,720 annual visitors (IRMA). The coastal area of the monument contains well-preserved and sensitive natural resources, including sea cliffs, maritime sage scrub, and rocky intertidal habitat. Understanding small-scale visitor use patterns to this area can guide management decisions such as congestion planning and allocation of recreation fee project money toward staffing the area. Infrared trail counters were deployed adjacent to two entrances to the Coastal Trail at the Tidepool Parking (south entrance) and Coast View Parking areas (north entrance) to capture visitation patterns 2011-2020. 
-
-```{r figure1, echo=FALSE, fig.align="center", fig.cap="**Figure 1.** Map of coastal area parking lots and "}
-
-```
+# Background & Introduction
+The Background & Summary should provide an overview of the study design, the assay(s) performed, and the data generated, including any background information needed to put this study in the context of previous work and the literature, and should reference literature as needed. The section should also briefly outline the broader goals that motivated collection of the data, as well as their potential reuse value. We also encourage authors to include a figure that provides a schematic overview of the study and assay(s) design. 
 
 # Methods
 The Methods should include detailed text describing any steps or procedures used in producing the data, including full descriptions of the experimental design, data acquisition assays, and any computational processing (e.g. normalization, image feature extraction). See the detailed section in our submission guidelines for advice on writing a transparent and reproducible methods section. Related methods should be grouped under corresponding subheadings where possible, and methods should be described in enough detail to allow other researchers to interpret and repeat, if required, the full study. Specific data outputs should be explicitly referenced via data citation (see Data Records and Citing Data, below).
@@ -109,9 +50,7 @@ Authors should cite previous descriptions of the methods under use, but ideally 
 Authors are encouraged to consider creating a figure that outlines the experimental workflow(s) used to generate and analyse the data output(s) (Figure 1).
 
 
-```{r figure1, echo=FALSE, fig.align="center", fig.cap="**Figure 1.** Example general workflow to include in the methods section."}
 
-```
 
 
 
@@ -147,9 +86,9 @@ step, should these form part of the archived record.
 
 Two datasets were generated as a part of this effort (Table 2):
 
-* **`r params$dataPackage1Title`.** Comma-separated text file enumerating the specific taxa considered to have federal conservation status in NPS park units. These data were compiled by the National Park Service Biological Resources Division and were last updated on XX. Available at `r paste0("https://irma.nps.gov/DataStore/Reference/Profile/", params$dataPackage1RefID)`. 
+* **.** Comma-separated text file enumerating the specific taxa considered to have federal conservation status in NPS park units. These data were compiled by the National Park Service Biological Resources Division and were last updated on XX. Available at https://irma.nps.gov/DataStore/Reference/Profile/. 
 
-* **`r params$dataPackage2Title`.** Comma-seperated text file enumerating the park-specific specific taxa about which data must be protected from release to the public based on federal conservation status. This dataset includes all taxa identified by the USFWS as well as their child taxa and taxonomic synonyms. Available at `r paste0("https://irma.nps.gov/DataStore/Reference/Profile/",params$dataPackage2RefID)`. 
+* **.** Comma-seperated text file enumerating the park-specific specific taxa about which data must be protected from release to the public based on federal conservation status. This dataset includes all taxa identified by the USFWS as well as their child taxa and taxonomic synonyms. Available at https://irma.nps.gov/DataStore/Reference/Profile/. 
 
 
 *Also include a table explaining provenance of datasets*
@@ -169,7 +108,7 @@ quality assurance planning documentation.
 
 *Stock Text to include:*
 
-The data within the data records listed above have been reviewed by staff in the NPS Inventory and Monitoring Division to ensure accuracy, completeness, and consistency with documented data quality standards, as well as for usability and reproducibility. The *`r params$dataPackage2Title `* is suitable for its intended use as of the date of processing (`r Sys.Date()`).
+The data within the data records listed above have been reviewed by staff in the NPS Inventory and Monitoring Division to ensure accuracy, completeness, and consistency with documented data quality standards, as well as for usability and reproducibility. The ** is suitable for its intended use as of the date of processing (2022-04-08).
 
 *Required Table*
 
