@@ -14,7 +14,7 @@ output:
     fig_caption: true
     dev: svg
     highlight: haddock
-    keep_md: yes
+    keep_md: no
     smart: no
     theme: journal
     css: "common/journalnps.min.css"
@@ -23,8 +23,6 @@ output:
     includes:
         before_body:
           - "common/header.html"
-        after_body: 
-          - "common/footer.html"
   bookdown::word_document2:
     df_print: kable
     fig_caption: yes
@@ -33,8 +31,8 @@ output:
     highlight: haddock
     number_sections: false
 ---
-
 ```{r md setup, include=FALSE}
+library(flextable)
 
 # set knitr options for all chunks
 knitr::opts_chunk$set(
@@ -54,8 +52,8 @@ if ("ggplot2" %in% .packages()) {
 
 # Set up table template
 NPS_theme <- function(x, ...) {
-    x <- colformat_double(x, big.mark = ",", decimal.mark = ".", digits = 1)
-    x <- colformat_int(x, big.mark = ",")
+    x <- colformat_double(x, big.mark = '', decimal.mark = ".", digits = 0)
+    x <- colformat_int(x, )
     x <- colformat_date(x,fmt_date = "%Y-%m-%d")
     x <- set_table_properties(x, layout = "fixed")
     x <- border_remove(x)
@@ -80,99 +78,109 @@ set_flextable_defaults(
 
 # set working directory (from YAML)
 setwd(params$projectDir)
+
+# figure text wrapping 
+# https://stackoverflow.com/questions/54100806/r-markdown-how-do-i-make-text-float-around-figures
+
+defOut <- knitr::knit_hooks$get("plot")  # save the default plot hook 
+knitr::knit_hooks$set(plot = function(x, options) {  # set new plot hook ...
+  x <- defOut(x, options)  # first apply the default hook
+  if(!is.null(options$wrapfigure)) {  # then, if option wrapfigure is given ...
+    # create the new opening string for the wrapfigure environment ...
+    wf <- sprintf("\\begin{wrapfigure}{%s}{%g\\textwidth}", options$wrapfigure[[1]], options$wrapfigure[[2]])
+    x  <- gsub("\\begin{figure}", wf, x, fixed = T)  # and replace the default one with it.
+    x  <- gsub("{figure}", "{wrapfigure}", x, fixed = T)  # also replace the environment ending
+  }
+  return(x)
+})
 ```
 
 ```{r data setup, include=FALSE}
-
-# load libraries
-library(tinytex)           # latex library for pdf conversion
-library(formattable)       # nice tables
 
 # run tm_data_analysis script to set up environment
 devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counter_2011_2020/main/scripts/tm_data_analysis.R')
 
 ```
-
 <hr>
-## Background & Introduction
-Cabrillo National Monument (San Diego, CA, USA) is a pint-sized unit of the National Park System (160 terrestrial acres) that attracts an average of 850,720 annual visitors (IRMA). The coastal area of the monument contains well-preserved and sensitive natural resources, including sea cliffs, maritime sage scrub, and rocky intertidal habitat. Understanding small-scale visitor use patterns to this area can guide management decisions such as congestion planning and allocation of recreation fee project money toward staffing the area. Infrared trail counters were deployed adjacent to two entrances to the Coastal Trail at the Tidepool Parking (south entrance) and Coast View Parking areas (north entrance) to capture visitation patterns 2011-2020. 
+### Summary
+Cabrillo National Monument (San Diego, CA, USA) is a pint-sized unit of the National Park System (0.65 terrestrial km2) that attracted an average of 850,720 annual visitors 2011-2020. The coastal area of the park contains well-preserved and sensitive natural resources, including sea cliffs, coastal and maritime sage scrub, and rocky intertidal habitat. Understanding visitor use patterns in this area can guide management decisions such as congestion planning and allocation of recreation fee project money toward staffing the area. Infrared trail counters (TrailMaster™ 1550, USA) were deployed adjacent to two entrances to the Coastal Trail at the Tidepool Parking and Coast View Parking areas to capture visitation patterns from 2011-2020.
 
-```{r figure1, echo=FALSE, fig.align="center", fig.cap="**Figure 1.** Map of coastal area parking lots and "}
+#### Low tide days don't result in increased visitation
+Despite the tidepools being a popular and desired visitor experience, tide level was not correlated with coastal area visitation. Despite these findings, increased staff and volunteer presence is needed during low tides to steward sensitive habitat. 
 
+#### Coastal area visitation has increased over time
+``````{r figure1, echo = F, warning = F, message = F, fig.height = 3, fig.width = 6, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
+
+visit_est %>%
+  pivot_wider(names_from = 'Location', values_from = 'Visitors') %>%
+  mutate(`Coastal area` = round(`Lot 1` + `Lot 2`, digits = 0)) %>%
+  mutate(`% of Visitors Exploring Coastal Area` = (`Coastal area`/`Entrance station`)) %>%
+  rename(`Coastal Area` = `Coastal area`, `Entrance Station` = `Entrance station`) %>%
+  ggplot(data = .) +  
+    geom_col(mapping = aes(x = Year, y = (`% of Visitors Exploring Coastal Area`*1000000)), fill = 'gray80') +
+    geom_line(mapping = aes(x = Year, y = `Coastal Area`), 
+              color = cal_palette('tidepool')[1], size = 2) +
+    geom_text(mapping = aes(x = 2011, y = `Coastal Area`[1] + 150000, label = 'Coastal area visitors'), 
+              color = cal_palette('tidepool')[1], hjust = 0) + 
+    geom_text(mapping = aes(x = 2011, y = `Entrance Station`[1] + 210000, label = 'Entrance station visitors'), 
+              color = cal_palette('tidepool')[5], hjust = 0) +
+    geom_text(mapping = aes(x = 2011, y = 150000, 
+                            label = 'Percent of all visitors exploring coastal area'),
+              color = 'gray30', hjust = 0) + 
+    geom_line(mapping = aes(x = Year, y = `Entrance Station`), 
+              color = cal_palette('tidepool')[5], size = 2) + 
+ 
+    scale_y_continuous(labels = scales::comma, 
+      sec.axis=sec_axis(~.*0.0001, name = 'Coastal area visitors (%)')) + 
+    scale_x_continuous(breaks = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)) +
+    ylab('Annual visitors') +
+    #scale_x_date(breaks = '1 year') + 
+    lltheme_light +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.95))
+  
 ```
+While total visitation to the park has fluctuated over time, visitation to the coastal area has increased steadily during the study period (2011-2020). Overall visitation increased 2011-2016 up to the National Park Service Centennial, but decreased after 2017 in conjunction with increasing entrance fees and the COVID-19 Pandemic. Despite changes in entrance station visitation, the number of visitors to the coastal area increased 2011-2020. **In 2020, 73% of park visitors explored the coastal area, compared to 37% in 2011.**
 
-# Methods
-The Methods should include detailed text describing any steps or procedures used in producing the data, including full descriptions of the experimental design, data acquisition assays, and any computational processing (e.g. normalization, image feature extraction). See the detailed section in our submission guidelines for advice on writing a transparent and reproducible methods section. Related methods should be grouped under corresponding subheadings where possible, and methods should be described in enough detail to allow other researchers to interpret and repeat, if required, the full study. Specific data outputs should be explicitly referenced via data citation (see Data Records and Citing Data, below).
+#### Weekends attract more visitors
+Weekend days (Saturday and Sunday) had the highest visitation, with an average of 1246 visitors per day entering the Coastal Trail from the Tidepool Parking lot and 370 visitors per day from the Coast View Parking lot. Weekend-edge days (Monday and Friday) had significantly lower visitation than weekend days, but higher visitation than midweek days (Tuesday through Thursday).
 
-Authors should cite previous descriptions of the methods under use, but ideally the method descriptions should be complete enough for others to understand and reproduce the methods and processing steps without referring to associated publications. There is no limit to the length of the Methods section.
+Across all days of the week, visitor activity is high at park opening (9:00 AM), drops mid-day, and peaks at closing time (4:30-5:00 PM).
 
-Authors are encouraged to consider creating a figure that outlines the experimental workflow(s) used to generate and analyse the data output(s) (Figure 1).
+#### Visitation increases most holidays
+```{r echo = F, warning = F, message = F, fig.height = 4, fig.width = 7, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
 
-
-```{r figure1, echo=FALSE, fig.align="center", fig.cap="**Figure 1.** Example general workflow to include in the methods section."}
-
+ggplot(data = holiday_test) + 
+  geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
+  geom_errorbar(mapping = aes(x = fct_rev(holiday), ymin = (mean_dif - se_dif), 
+                              ymax = (mean_dif + se_dif), width = 0.3),
+                color =  'gray48') + 
+  scale_fill_manual(values = c('gray85', cal_palette('tidepool')[1])) + 
+  geom_text(mapping = aes(x = 14, y = -100, label = 'Fewer visitors'), 
+            color = 'black', hjust = 0.95, size = 3.5) + 
+  geom_text(mapping = aes(x = 14, y = 100, label = 'More visitors'), 
+            color = 'black', hjust = 0, size = 3.5) + 
+  geom_text(data = filter(holiday_test, pval_sig == TRUE),
+            mapping = aes(x = fct_rev(holiday), y = (mean_dif + se_dif + 100), 
+                          label = '*'), color = 'black') +
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'black') + 
+  coord_flip(xlim = c(1,14)) +
+  scale_y_continuous(breaks = seq(-1000,1000, by = 500), limits = c(-1200,1200)) +
+  ylab('Difference in visitation') + 
+  xlab('Holiday') +
+  facet_wrap(~lot, labeller = as_labeller(c('Lot 1' = 'Tidepool Parking',
+                                            'Lot 2' = 'Coast View Parking'))) + 
+  lltheme_light + 
+  theme(legend.position = 'none',
+        panel.grid = element_blank(),
+        text = element_text(color = 'black', size = 10),
+        axis.text = element_text(color = 'black'),
+        axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+Apart from New Year’s Day, Christmas Day and Veterans Day, all holidays and holiday-adjacent days considered had significantly higher visitation than fourteen days after (as indicated by stars on figure). While there is some overlap between fee-free days and holidays, **there was no strong pattern between fee-free days and visitation.
 
+On average, holidays and holiday-adjacent days attract over 800 additional visitors to the coastal area! 
 
-
-## Data Collection and Sample Processing Methods (optional)
-Include a description of field methods and sample processing 
-
-## Additional Data Sources (optional)
-Provide descriptions (with citations) of other data sources used.
-
-## Data Processing (required if done)
-Summarize process and results of any QC processes done that manipulate, change, or qualify data.
-
-## Code Availability (required)
-For all studies using custom code in the generation or processing of datasets, a statement must be included in the Methods section, under the subheading "Code availability", indicating whether and how the code can be accessed, including any restrictions to access. This section should also include information on the versions of any software used, if relevant, and any specific variables or parameters used to generate, test, or process the current dataset. Actual analytical code should be provided in Appendices.
-
-# Data Records (required)
-The Data Records section should be used to explain each data record associated
-with this work, including the repository where this information is stored, and
-to provide an overview of the data files and their formats. Each external data
-record should be cited as described below. A data citation should also be placed
-in the subsection of the Methods containing the data-collection or analytical
-procedure(s) used to derive the corresponding record.
-
-Tables should be used to support the data records, and should clearly indicate
-the samples and subjects (study inputs), their provenance, and the experimental
-manipulations performed on each (please see example Tables below). They should
-also specify the data output resulting from each data-collection or analytical
-step, should these form part of the archived record.
-
-## Required Elements for this Section
-
-### Summary of datasets created. Example of stock text to include. ###
-
-Two datasets were generated as a part of this effort (Table 2):
-
-* **`r params$dataPackage1Title`.** Comma-separated text file enumerating the specific taxa considered to have federal conservation status in NPS park units. These data were compiled by the National Park Service Biological Resources Division and were last updated on XX. Available at `r paste0("https://irma.nps.gov/DataStore/Reference/Profile/", params$dataPackage1RefID)`. 
-
-* **`r params$dataPackage2Title`.** Comma-seperated text file enumerating the park-specific specific taxa about which data must be protected from release to the public based on federal conservation status. This dataset includes all taxa identified by the USFWS as well as their child taxa and taxonomic synonyms. Available at `r paste0("https://irma.nps.gov/DataStore/Reference/Profile/",params$dataPackage2RefID)`. 
-
-
-*Also include a table explaining provenance of datasets*
-
-See Appendix for additional notes and examples.
-
-# Data Quality Evaluation (required)
-The Data Quality Evaluation section should present any analyses that are needed
-to support the technical quality of the dataset. This section may be supported
-by figures and tables, as needed. *This is a required section*; authors must
-provide information to justify the reliability of their data. Wherever possible
-& appropriate, data quality evaluation should be presented in the context of
-data standards and quality control procedures as prescribed in the project’s
-quality assurance planning documentation.
-
-**Required elements for this section**
-
-*Stock Text to include:*
-
-The data within the data records listed above have been reviewed by staff in the NPS Inventory and Monitoring Division to ensure accuracy, completeness, and consistency with documented data quality standards, as well as for usability and reproducibility. The *`r params$dataPackage2Title `* is suitable for its intended use as of the date of processing (`r Sys.Date()`).
-
-*Required Table*
-
-Summary of any data qualification codes used, their definitions, and the fields to which they apply.
+### Recommendations
+Findings indicate that peak staffing of Volunteers-in-Parks (VIPs) and park staff should occur on weekends and holidays, regardless of tide level. We recommend to double staffing on weekends and holidays, with an even higher multiplier on holiday weekends.
 
 
