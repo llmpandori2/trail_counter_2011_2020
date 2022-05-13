@@ -103,13 +103,13 @@ devtools::source_url('https://raw.githubusercontent.com/llmpandori2/trail_counte
 ```
 <hr>
 ### Summary
-Cabrillo National Monument (San Diego, CA, USA) is a pint-sized unit of the National Park System (0.65 terrestrial km2) that attracted an average of 850,720 annual visitors 2011-2020. The coastal area of the park contains well-preserved and sensitive natural resources, including sea cliffs, coastal and maritime sage scrub, and rocky intertidal habitat. Understanding visitor use patterns in this area can guide management decisions such as congestion planning and allocation of recreation fee project money toward staffing the area. Infrared trail counters (TrailMaster™ 1550, USA) were deployed adjacent to two entrances to the Coastal Trail at the Tidepool Parking and Coast View Parking areas to capture visitation patterns from 2011-2020.
+Cabrillo National Monument (San Diego, CA, USA) is a pint-sized unit of the National Park System (160 terrestrial acres) that attracted an average of 850,720 annual visitors 2011-2020. The coastal area of the park contains well-preserved and sensitive natural resources, including sea cliffs, coastal and maritime sage scrub, and rocky intertidal habitat. Understanding visitor use patterns in this area can guide management decisions such as congestion planning and allocation of recreation fee project money toward staffing the area. Infrared trail counters (TrailMaster™ 1550, USA) were deployed adjacent to two entrances to the Coastal Trail at the Tidepool Parking and Coast View Parking areas to capture visitation patterns from 2011-2020.
 
 #### Low tide days don't result in increased visitation
 Despite the tidepools being a popular and desired visitor experience, tide level was not correlated with coastal area visitation. Despite these findings, increased staff and volunteer presence is needed during low tides to steward sensitive habitat. 
 
 #### Coastal area visitation has increased over time
-``````{r figure1, echo = F, warning = F, message = F, fig.height = 3, fig.width = 6, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
+``````{r figure1, echo = F, warning = F, message = F, fig.height = 3, fig.width = 5, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
 
 visit_est %>%
   pivot_wider(names_from = 'Location', values_from = 'Visitors') %>%
@@ -136,7 +136,8 @@ visit_est %>%
     ylab('Annual visitors') +
     #scale_x_date(breaks = '1 year') + 
     lltheme_light +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.95))
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.95),
+          text = element_text(color = 'black', size = 11))
   
 ```
 While total visitation to the park has fluctuated over time, visitation to the coastal area has increased steadily during the study period (2011-2020). Overall visitation increased 2011-2016 up to the National Park Service Centennial, but decreased after 2017 in conjunction with increasing entrance fees and the COVID-19 Pandemic. Despite changes in entrance station visitation, the number of visitors to the coastal area increased 2011-2020. **In 2020, 73% of park visitors explored the coastal area, compared to 37% in 2011.**
@@ -147,7 +148,7 @@ Weekend days (Saturday and Sunday) had the highest visitation, with an average o
 Across all days of the week, visitor activity is high at park opening (9:00 AM), drops mid-day, and peaks at closing time (4:30-5:00 PM).
 
 #### Visitation increases most holidays
-```{r echo = F, warning = F, message = F, fig.height = 4, fig.width = 7, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
+```{r echo = F, warning = F, message = F, fig.height = 5, fig.width = 7, out.width = '50%', out.extra = 'style = "float:right; padding 5px"'}
 
 ggplot(data = holiday_test) + 
   geom_col(mapping = aes(y = mean_dif, x = fct_rev(holiday), fill = pval_sig)) + 
@@ -172,11 +173,11 @@ ggplot(data = holiday_test) +
   lltheme_light + 
   theme(legend.position = 'none',
         panel.grid = element_blank(),
-        text = element_text(color = 'black', size = 10),
+        text = element_text(color = 'black', size = 11),
         axis.text = element_text(color = 'black'),
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-Apart from New Year’s Day, Christmas Day and Veterans Day, all holidays and holiday-adjacent days considered had significantly higher visitation than fourteen days after (as indicated by stars on figure). While there is some overlap between fee-free days and holidays, **there was no strong pattern between fee-free days and visitation.
+Apart from New Year’s Day, Christmas Day and Veterans Day, all holidays and holiday-adjacent days considered had significantly higher visitation than fourteen days after (as indicated by stars on figure). While there is some overlap between fee-free days and holidays, **there was no strong pattern between fee-free days and visitation.**
 
 On average, holidays and holiday-adjacent days attract over 800 additional visitors to the coastal area! 
 
