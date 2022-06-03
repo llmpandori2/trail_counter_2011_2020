@@ -3,7 +3,7 @@
 ### Purpose: Analysis of trail counter data 2011-2020 for 2022 manuscript
 ### Author: L. Pandori
 ### Date Created: 12/21/21
-### Last Edited: 3/31/22
+### Last Edited: 5/31/22
 ###############################################################################
 
 ##### load packages #####
@@ -341,7 +341,7 @@ ggsave(filename = './figs/vistation_dow_dark.png',
 
 remove(hsd, weekday_n, fn_aov_hsd)
 
-##### question 3 - Visitation on holidays/non-holidays? #####
+##### question 3 - visitation on holidays/non-holidays? #####
 
 # get dates of holidays from OPM
 holidates <- read_excel("./data/accessory/OPM_Holidays_2010_2020.xlsx")
