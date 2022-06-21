@@ -14,6 +14,11 @@
 # User-specific files
 .Ruserdata
 
+# some extra scripts
+/scripts/mgmt_brief_alt_figs.R
+/scripts/tm_mgmt_brief_interactive.Rmd
+/scripts/tm_mgmt_brief.Rmd
+
 # Example code in package build process
 *-Ex.R
 
